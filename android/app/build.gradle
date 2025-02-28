@@ -52,31 +52,11 @@ android {
         
     }
 
-    signingConfigs {
-        release {
-            // keyAlias keystoreProperties['keyAlias']
-            // keyPassword keystoreProperties['keyPassword']
-            // storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
-            // storePassword keystoreProperties['storePassword']
-        }
-        debug {
-            // keyAlias keystoreProperties['keyAlias']
-            // keyPassword keystoreProperties['keyPassword']
-            // storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
-            // storePassword keystoreProperties['storePassword']
-        }
-    }
-
     buildTypes {
         release {
             shrinkResources false
             minifyEnabled false
-            signingConfig signingConfigs.release
-        }
-        debug {
-            shrinkResources false
-            minifyEnabled false
-            signingConfig signingConfigs.debug
+            // signingConfig signingConfigs.release
         }
     }
     lintOptions {
