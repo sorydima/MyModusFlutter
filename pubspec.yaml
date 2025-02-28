@@ -1,7 +1,7 @@
 name: modus
 description: My Modus is a team of professionals who work on creating collections.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ">=2.12.0 <3.0.0"
