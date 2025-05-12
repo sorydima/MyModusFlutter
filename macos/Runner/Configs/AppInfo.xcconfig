@@ -8,7 +8,7 @@
 PRODUCT_NAME = MyModus
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.modus.fashion
+PRODUCT_BUNDLE_IDENTIFIER = com.mymodus.fashion
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2025 MyModus ®. A Dmitry Sorokin Production. All rights reserved.

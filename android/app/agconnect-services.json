@@ -27,7 +27,7 @@
 		"project_id":"461323198429542050",
 		"app_id":"113582887",
 		"api_key":"DQEDAF7rzX3hsqRNf7lAUAwnZzcELeAXJzRqP6PT4UW9DTW3anCVyw/8WnzI/AGlJPqDZXXZoE7EcEY1Qp7zVGnsm/Kr6VNglCZHHA==",
-		"package_name":"com.modus.fashion"
+		"package_name":"com.mymodus.fashion"
 	},
 	"oauth_client":{
 		"client_id":"113582887",
@@ -35,17 +35,17 @@
 	},
 	"app_info":{
 		"app_id":"113582887",
-		"package_name":"com.modus.fashion"
+		"package_name":"com.mymodus.fashion"
 	},
 	"configuration_version":"3.0",
 	"appInfos":[
 		{
-			"package_name":"com.modus.fashion",
+			"package_name":"com.mymodus.fashion",
 			"client":{
 				"app_id":"113582887"
 			},
 			"app_info":{
-				"package_name":"com.modus.fashion",
+				"package_name":"com.mymodus.fashion",
 				"app_id":"113582887"
 			},
 			"oauth_client":{

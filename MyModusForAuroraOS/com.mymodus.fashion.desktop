@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+X-Nemo-Application-Type=silica-qt5
+Icon=com.mymodus.fashion
+Exec=/usr/bin/com.mymodus.fashion
+Name=MyModus
+Name[ru]=MyModus
+
+[X-Application]
+Permissions=Audio;Camera;Documents;Downloads;Internet;Location;MediaIndexing;Microphone;Music;NFC;Pictures;PublicDir;PushNotifications;RemovableMedia;ScreenCapture;Videos;WebView
+OrganizationName=com.modus
+ApplicationName=fashion

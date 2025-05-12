@@ -43,7 +43,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.modus.fashion"
+        applicationId "com.mymodus.fashion"
         minSdkVersion 21
         targetSdkVersion 34
         multiDexEnabled true
