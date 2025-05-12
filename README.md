@@ -47,9 +47,9 @@ DOWNLOAD MYMODUS TODAY
 
 Discover the perfect combination of fashion, convenience and exclusivity. Enhance your wardrobe with MyModus - your best place to shop.
 
-https://api.codemagic.io/apps/67c087a334b0b50682f98cc5/67c087a334b0b50682f98cc4/status_badge.svg
+https://api.codemagic.io/apps/6822547f6d64170bb2d290c4/6822547f6d64170bb2d290c3/status_badge.svg
 
-[![Codemagic build status](https://api.codemagic.io/apps/67c087a334b0b50682f98cc5/67c087a334b0b50682f98cc4/status_badge.svg)](https://codemagic.io/app/67c087a334b0b50682f98cc5/67c087a334b0b50682f98cc4/latest_build)
+[![Codemagic build status](https://api.codemagic.io/apps/6822547f6d64170bb2d290c4/6822547f6d64170bb2d290c3/status_badge.svg)](https://codemagic.io/app/6822547f6d64170bb2d290c4/6822547f6d64170bb2d290c3/latest_build)
 
 Welcome to the **MyModus Flutter App**, a cross-platform application designed to enhance user experience for **MyModus**. This project is built using **Flutter** and **Dart**, ensuring a seamless experience across Android, iOS, and other platforms.
 
