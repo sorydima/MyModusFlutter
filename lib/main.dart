@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:modus/pages/homepage.dart';
 import 'package:modus/pages/onboarding.dart';
 import 'package:modus/provider/homepageprovider.dart';
+import 'package:modus/provider/product_provider.dart';
 import 'package:modus/provider/webview.dart';
 import 'package:modus/utils/colors.dart';
 import 'package:modus/utils/global_fuction.dart';
@@ -51,6 +52,7 @@ void main() async {
   runApp(
     MultiProvider(providers: [
       ChangeNotifierProvider(create: (_) => HomePageProvider()),
+      ChangeNotifierProvider(create: (_) => ProductProvider()),
       ChangeNotifierProvider(create: (_) => WebViewProvider()),
     ], child: const MyApp()),
   ); //only myapp
