@@ -1,0 +1,13 @@
+name: my_modus_backend
+description: Backend proxy and parser for My Modus
+version: 0.2.0
+
+environment:
+  sdk: ">=2.18.0 <3.0.0"
+
+dependencies:
+  shelf: ^1.4.0
+  http: ^0.13.6
+  shelf_router: ^1.0.0
+  html: ^0.15.0
+  mime: ^1.0.2
