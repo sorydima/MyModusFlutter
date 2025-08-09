@@ -1,0 +1,1 @@
+Unzip this archive into your repository root. Review workflows and replace secrets in GitHub Actions.

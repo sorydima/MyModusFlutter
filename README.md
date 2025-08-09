@@ -1,24 +1,30 @@
-My Modus — Monorepo (Frontend + Backend)
+# MyModusFlutter — Sprint 1 scaffold
 
-Structure:
-- frontend/  — Flutter app (VIP design)
-- backend/   — Dart Shelf parser API (returns structured JSON)
-- .github/workflows/ — CI: build & deploy web, build backend image, lint/test, deploy to Render
+Этот архив содержит полный набор файлов для выполнения **Sprint 1 (14 дней)**:
+- scaffold фронтенда (Flutter) с i18n, GoRouter и темой;
+- scaffold бэкенда (Dart Shelf) с JWT, PostgreSQL и health-check;
+- GitHub Actions для CI (lint/test/build) и шаблон деплоя;
+- простая страница-лендинг для GitHub Pages;
+- шаблоны маркетинговых постов (Twitter, Telegram, Dev.to);
+- шаблон доски задач (Trello/Notion) в Markdown;
+- инструкции по применению и деплою.
 
-HOW TO USE (local):
-1) Frontend:
-   cd frontend
-   flutter pub get
-   flutter create .   # generate platform folders if needed
-   flutter run -d chrome
+> Как применить:
+1. Распакуйте архив в корень вашего репозитория `MyModusFlutter` или в новую ветку:
+   ```bash
+   unzip mymodus_sprint1.zip -d mymodus_sprint1_tmp
+   cp -r mymodus_sprint1_tmp/* /path/to/MyModusFlutter/
+   ```
+2. Просмотрите файлы, замените секреты и значения в `.github/workflows/*.yml`, `backend/.env.template`.
+3. Создайте новую ветку, закоммитьте изменения и запушьте:
+   ```bash
+   git checkout -b feature/sprint1
+   git add .
+   git commit -m "feat(sprint1): scaffold frontend, backend, CI, landing, docs"
+   git push origin feature/sprint1
+   ```
+4. Настройте секреты в GitHub: `DATABASE_URL`, `JWT_SECRET`, `GHCR_TOKEN` (если пушите образ), `RENDER_API_KEY` (если используете Render).
+5. Запустите локально: `scripts/setup_local.sh`
 
-2) Backend:
-   cd backend
-   dart pub get
-   dart run bin/server.dart
-
-DEPLOY:
-- Push to GitHub main branch. Web is built and deployed to gh-pages via Actions.
-- Backend Docker image is built and pushed to GHCR via Actions.
-- To auto-deploy backend to Render, set secret RENDER_SERVICE_ID and RENDER_API_TOKEN in repo secrets.
+---
 

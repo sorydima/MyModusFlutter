@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -e
+echo "Инструкция по применению scaffold в вашем репозитории"
+echo ""
+echo "1) Распакуйте архив и скопируйте файлы в корень репозитория:"
+echo "   unzip mymodus_sprint1.zip -d /tmp/mymodus_sprint1"
+echo "   cp -r /tmp/mymodus_sprint1/* /path/to/MyModusFlutter/"
+echo ""
+echo "2) Создайте ветку и закоммитьте:"
+echo "   git checkout -b feature/sprint1"
+echo "   git add ."
+echo "   git commit -m "feat(sprint1): scaffold frontend, backend, CI, landing, docs""
+echo "   git push origin feature/sprint1"
+echo ""
+echo "Не забудьте настроить секреты в GitHub (Actions): DATABASE_URL, JWT_SECRET, GHCR_TOKEN (по необходимости)"

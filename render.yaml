@@ -1,0 +1,15 @@
+# Пример render.yaml для автодеплоя (Render.com)
+services:
+  - type: web
+    name: mymodus-backend
+    env: docker
+    dockerfilePath: backend/Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        value: ${{ DATABASE_URL }}
+      - key: JWT_SECRET
+        value: ${{ JWT_SECRET }}
+  - type: static
+    name: mymodus-frontend
+    env: static
+    staticPublishPath: frontend/build/web
