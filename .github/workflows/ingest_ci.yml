@@ -1,0 +1,41 @@
+name: Scrapers CI (Ingest Seeds)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ develop, main ]
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: mymodus
+          POSTGRES_PASSWORD: mymodus_pass
+          POSTGRES_DB: mymodus_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd='pg_isready -U mymodus -d mymodus_db'
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - name: Install deps
+        working-directory: backend
+        run: dart pub get
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgres://mymodus:mymodus_pass@localhost:5432/mymodus_db
+        run: |
+          dart backend/bin/migrate.dart
+      - name: Run ingest
+        run: |
+          dart backend/bin/ingest.dart seeds/seed_urls.txt

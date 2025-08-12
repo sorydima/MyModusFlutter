@@ -39,3 +39,27 @@ curl -X POST http://localhost:8001/enqueue -H "Content-Type: application/json" -
 Notes:
 - For many marketplace pages you'll need Playwright (JS-rendered pages). The requests-based scraper works on simple static pages.
 - Respect robots.txt and marketplace ToS. Use polite delays, proxy rotation and don't overload target sites.
+
+
+## Ingest & Scrapers
+
+To run the ingest job locally:
+
+```
+# ensure DB is running and migrations applied
+dart backend/bin/ingest.dart seeds/seed_urls.txt
+```
+
+Search endpoint:
+`GET /api/v1/search?q=shirt&limit=10`
+
+
+## Testing marketplace scrapers
+
+Seed URLs now include Lamoda, Wildberries and Ozon brand pages (from your input). Run ingest to attempt parsing them:
+
+```
+dart backend/bin/ingest.dart seeds/seed_urls.txt
+```
+
+If parsing fails for a page, adapters will return an error; send me the exact HTML snapshot and I will refine the parser.

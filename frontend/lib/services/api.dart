@@ -38,3 +38,20 @@ Future<Map<String, dynamic>> launchScrape(String url, String connector) async {
   if (res.statusCode == 200) return jsonDecode(res.body) as Map<String, dynamic>;
   throw Exception('Failed to launch: ' + res.body);
 }
+
+
+Future<Map<String,dynamic>> likePost(int postId, String token) async {
+  final res = await http.post(Uri.parse('\$baseUrl/api/v1/posts/\$postId/like'), headers: {'Authorization':'Bearer \$token'});
+  return {'status': res.statusCode, 'body': res.body};
+}
+
+Future<Map<String,dynamic>> savePost(int postId, String token) async {
+  final res = await http.post(Uri.parse('\$baseUrl/api/v1/posts/\$postId/save'), headers: {'Authorization':'Bearer \$token'});
+  return {'status': res.statusCode, 'body': res.body};
+}
+
+Future<Map<String,dynamic>> search(String q, {int limit = 20, int offset = 0}) async {
+  final res = await http.get(Uri.parse('\$baseUrl/api/v1/search?q=\$q&limit=\$limit&offset=\$offset'));
+  if (res.statusCode == 200) return jsonDecode(res.body);
+  return {'error': res.body};
+}

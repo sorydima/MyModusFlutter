@@ -1,15 +1,16 @@
-# Пример render.yaml для автодеплоя (Render.com)
 services:
   - type: web
     name: mymodus-backend
     env: docker
+    plan: free
     dockerfilePath: backend/Dockerfile
     envVars:
       - key: DATABASE_URL
-        value: ${{ DATABASE_URL }}
+        value: postgres://mymodus:mymodus_pass@db:5432/mymodus_db
       - key: JWT_SECRET
-        value: ${{ JWT_SECRET }}
-  - type: static
+        value: __REPLACE_WITH_SECRET__
+  - type: web
     name: mymodus-frontend
     env: static
+    buildCommand: cd frontend && flutter build web --release
     staticPublishPath: frontend/build/web
