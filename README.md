@@ -1,30 +1,41 @@
-# MyModusFlutter — Sprint 1 scaffold
 
-Этот архив содержит полный набор файлов для выполнения **Sprint 1 (14 дней)**:
-- scaffold фронтенда (Flutter) с i18n, GoRouter и темой;
-- scaffold бэкенда (Dart Shelf) с JWT, PostgreSQL и health-check;
-- GitHub Actions для CI (lint/test/build) и шаблон деплоя;
-- простая страница-лендинг для GitHub Pages;
-- шаблоны маркетинговых постов (Twitter, Telegram, Dev.to);
-- шаблон доски задач (Trello/Notion) в Markdown;
-- инструкции по применению и деплою.
 
-> Как применить:
-1. Распакуйте архив в корень вашего репозитория `MyModusFlutter` или в новую ветку:
+## Bot service (FastAPI) — quickstart
+
+The repository now includes a bot service (bot_service/) that provides:
+- FastAPI endpoints to enqueue scraping tasks (`POST /enqueue`)
+- A worker (`worker.py`) that polls the sqlite DB and processes jobs
+- A simple requests-based scraper (`scraper_requests.py`) and an optional Playwright scraper (`scraper_playwright.py`)
+
+Local dev steps:
+1. Create virtualenv and install dependencies:
    ```bash
-   unzip mymodus_sprint1.zip -d mymodus_sprint1_tmp
-   cp -r mymodus_sprint1_tmp/* /path/to/MyModusFlutter/
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r bot_service/requirements.txt
    ```
-2. Просмотрите файлы, замените секреты и значения в `.github/workflows/*.yml`, `backend/.env.template`.
-3. Создайте новую ветку, закоммитьте изменения и запушьте:
+2. Optionally install Playwright browsers if you plan to use the Playwright scraper:
    ```bash
-   git checkout -b feature/sprint1
-   git add .
-   git commit -m "feat(sprint1): scaffold frontend, backend, CI, landing, docs"
-   git push origin feature/sprint1
+   playwright install chromium
    ```
-4. Настройте секреты в GitHub: `DATABASE_URL`, `JWT_SECRET`, `GHCR_TOKEN` (если пушите образ), `RENDER_API_KEY` (если используете Render).
-5. Запустите локально: `scripts/setup_local.sh`
+3. Initialize DB:
+   ```bash
+   python bot_service/init_db.py
+   ```
+4. Start API server:
+   ```bash
+   uvicorn bot_service.app:app --host 0.0.0.0 --port 8001
+   ```
+5. Start worker in another shell:
+   ```bash
+   python bot_service/worker.py
+   ```
 
----
+To enqueue a job:
+```bash
+curl -X POST http://localhost:8001/enqueue -H "Content-Type: application/json" -d '{"url":"https://www.wildberries.ru/catalog/12345", "connector":"wildberries"}'
+```
 
+Notes:
+- For many marketplace pages you'll need Playwright (JS-rendered pages). The requests-based scraper works on simple static pages.
+- Respect robots.txt and marketplace ToS. Use polite delays, proxy rotation and don't overload target sites.

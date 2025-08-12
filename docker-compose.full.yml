@@ -1,0 +1,63 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: mymodus
+      POSTGRES_PASSWORD: example
+      POSTGRES_DB: mymodus_db
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://mymodus:example@db:5432/mymodus_db
+      JWT_SECRET: replace_in_prod
+      PORT: 8080
+      SCRAPE_DELAY_MS: 2000
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/app/backend
+
+  worker:
+    build: ./backend
+    command: ["dart", "run", "bin/worker.dart"]
+    environment:
+      DATABASE_URL: postgres://mymodus:example@db:5432/mymodus_db
+      SCRAPE_DELAY_MS: 2000
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/app/backend
+
+  bot_service:
+    build:
+      context: .
+      dockerfile: bot_service/Dockerfile
+    environment:
+      - BOT_DB=/data/bot.db
+      - PLAYWRIGHT_INSTALL=false
+    volumes:
+      - ./bot_service:/app
+      - bot_data:/data
+    ports:
+      - "8001:8001"
+    depends_on:
+      - backend
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8000:80"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
+  bot_data:

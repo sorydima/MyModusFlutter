@@ -1,48 +1,46 @@
 import 'package:flutter/material.dart';
-import '../models/product.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ProductDetail extends StatelessWidget {
-  final Product product;
-  const ProductDetail({super.key, required this.product});
-
-  void _launchLink(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
+  final Map<String, dynamic> product;
+  const ProductDetail({required this.product, Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final images = product['images'] ?? (product['image']!=null ? [product['image']] : []);
+    final title = product['title'] ?? 'No title';
+    final price = product['price'] ?? '';
+    final description = product['description'] ?? '';
+    final heroTag = product['external_id'] ?? product['title'] ?? UniqueKey().toString();
     return Scaffold(
-      appBar: AppBar(
-        title: Text(product.title, style: GoogleFonts.playfairDisplay()),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: IconThemeData(color: Colors.black),
-      ),
-      body: Column(
+      appBar: AppBar(title: Text('Product')),
+      body: ListView(
         children: [
-          Image.network(product.image ?? '', height: 320, width: double.infinity, fit: BoxFit.cover, errorBuilder: (_,__,___)=>Container(height:320,color:Colors.grey)),
+          if (images.isNotEmpty)
+            Hero(
+              tag: heroTag,
+              child: SizedBox(
+                height: 320,
+                child: PageView.builder(
+                  itemCount: images.length,
+                  itemBuilder: (ctx, i) => CachedNetworkImage(imageUrl: images[i], fit: BoxFit.cover, errorWidget: (_,__,___)=>Container(color:Colors.grey[300])),
+                ),
+              ),
+            ),
           Padding(
-            padding: EdgeInsets.all(12),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(product.title, style: GoogleFonts.playfairDisplay(textStyle: TextStyle(fontSize:22, fontWeight: FontWeight.w700))),
-              SizedBox(height:8),
-              Row(children: [
-                Text('${product.price ?? '-'} ₽', style: TextStyle(fontSize:20, fontWeight: FontWeight.bold, color: Colors.pink[700])),
-                SizedBox(width:8),
-                if (product.oldPrice != null) Text('${product.oldPrice} ₽', style: TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey)),
-                Spacer(),
-                ElevatedButton(onPressed: ()=> _launchLink(product.link), child: Text('Купить на Wildberries'))
-              ]),
-              SizedBox(height:12),
-              Text('Описание', style: TextStyle(fontWeight: FontWeight.bold)),
-              SizedBox(height:6),
-              Text('Стильное изделие от My Modus. Подробности и размеры смотрите на странице Wildberries.'),
-            ]),
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(fontSize:20, fontWeight: FontWeight.bold)),
+                SizedBox(height:8),
+                Text(price, style: TextStyle(color: Colors.green[700], fontSize:18)),
+                SizedBox(height:12),
+                Text(description),
+                SizedBox(height:20),
+                ElevatedButton.icon(onPressed: (){}, icon: Icon(Icons.shopping_cart), label: Text('Buy')),
+              ],
+            ),
           )
         ],
       ),

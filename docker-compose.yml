@@ -1,26 +1,18 @@
 version: '3.8'
 services:
-  db:
-    image: postgres:15
+  bot_service:
+    build:
+      context: .
+      dockerfile: bot_service/Dockerfile
     environment:
-      POSTGRES_USER: mymodus
-      POSTGRES_PASSWORD: mymodus_pass
-      POSTGRES_DB: mymodus_db
+      - BOT_DB=/data/bot.db
+      - PLAYWRIGHT_INSTALL=false
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - ./bot_service:/app
+      - bot_data:/data
     ports:
-      - "5432:5432"
-
-  backend:
-    build: .
-    environment:
-      DATABASE_URL: postgres://mymodus:mymodus_pass@db:5432/mymodus_db
-      PORT: "8080"
-      JWT_SECRET: "change_this_in_production"
-    depends_on:
-      - db
-    ports:
-      - "8080:8080"
+      - "8001:8001"
+    restart: unless-stopped
 
 volumes:
-  db_data:
+  bot_data:

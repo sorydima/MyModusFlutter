@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+httpx
+beautifulsoup4
+pydantic
+sqlite-utils
+python-dotenv
+aiohttp
+tenacity
+playwright==1.35.1
