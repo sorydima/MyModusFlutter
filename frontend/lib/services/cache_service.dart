@@ -1,36 +1,22 @@
-import 'dart:io';
-import 'dart:convert';
-import 'package:path_provider/path_provider.dart';
-import '../models/product.dart';
+
+import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 class CacheService {
-  static const _cacheFile = 'products_cache.json';
+  static final CacheService _instance = CacheService._internal();
+  factory CacheService() => _instance;
+  CacheService._internal();
 
-  static Future<String> _localPath() async {
-    final dir = await getApplicationDocumentsDirectory();
-    return dir.path;
+  Future<void> init() async {
+    await Hive.initFlutter();
+    // Регистрация адаптеров, если есть модели
+    // Hive.registerAdapter(ProductAdapter());
+    await Hive.openBox('cache_box');
   }
 
-  static Future<void> saveProducts(List<Product> products) async {
-    try {
-      final path = await _localPath();
-      final file = File('$path/$_cacheFile');
-      final jsonStr = json.encode(products.map((p) => p.toJson()).toList());
-      await file.writeAsString(jsonStr, flush: true);
-    } catch (e) {
-    }
-  }
+  Box get box => Hive.box('cache_box');
 
-  static Future<List<Product>> loadProducts() async {
-    try {
-      final path = await _localPath();
-      final file = File('$path/$_cacheFile');
-      if (!await file.exists()) return [];
-      final s = await file.readAsString();
-      final arr = json.decode(s) as List<dynamic>;
-      return arr.map((e) => Product.fromJson(e as Map<String, dynamic>)).toList();
-    } catch (e) {
-      return [];
-    }
-  }
+  dynamic get(String key) => box.get(key);
+  Future<void> set(String key, dynamic value) async => await box.put(key, value);
+  Future<void> remove(String key) async => await box.delete(key);
 }
