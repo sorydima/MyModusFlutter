@@ -1,72 +1,55 @@
 import 'package:flutter/material.dart';
 import '../services/api.dart';
-import '../components/product_card.dart';
-import '../components/story_widget.dart';
-import 'product_detail.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'item_screen.dart';
 
 class FeedScreen extends StatefulWidget {
+  final ApiService api;
+  const FeedScreen({super.key, required this.api});
+
   @override
-  _FeedScreenState createState() => _FeedScreenState();
+  State<FeedScreen> createState() => _FeedScreenState();
 }
 
 class _FeedScreenState extends State<FeedScreen> {
-  List<dynamic> items = [];
+  List posts = [];
   bool loading = true;
 
   @override
   void initState() {
     super.initState();
-    load();
+    _load();
   }
 
-  void load() async {
-    try {
-      final res = await fetchProducts();
-      setState(() { items = res; loading = false; });
-    } catch (e) {
-      setState(() { items = []; loading = false; });
+  void _load() async {
+    setState(() { loading = true; });
+    final res = await widget.api.getFeed();
+    if (res.containsKey('posts')) {
+      setState(() { posts = res['posts']; loading = false; });
+    } else {
+      setState(() { loading = false; });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final demoStories = [
-      StoryItem(id:'s1', image:'https://picsum.photos/seed/1/400/800', title:'New in'),
-      StoryItem(id:'s2', image:'https://picsum.photos/seed/2/400/800', title:'Sale'),
-      StoryItem(id:'s3', image:'https://picsum.photos/seed/3/400/800', title:'Trending'),
-    ];
     return Scaffold(
-      appBar: AppBar(title: Text('MyModus')),
-      body: loading ? Center(child:CircularProgressIndicator()) : RefreshIndicator(
-        onRefresh: () async { load(); },
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(child: StoriesReel(items: demoStories)),
-            SliverPadding(
-              padding: EdgeInsets.symmetric(horizontal:12, vertical:8),
-              sliver: SliverMasonryGrid.count(
-                crossAxisCount: 2,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childCount: items.length,
-                itemBuilder: (ctx, i) {
-                  final p = items[i];
-                  return GestureDetector(
-                    onDoubleTap: (){}, // handled in card
-                    child: ProductCard(product: p, onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => ProductDetail(product: p)));
-                    }),
-                  );
-                },
-              ),
-            )
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.pushNamed(context, '/create_post'),
-        child: Icon(Icons.add),
+      appBar: AppBar(title: const Text('Feed')),
+      body: loading ? const Center(child: CircularProgressIndicator()) :
+      ListView.builder(
+        itemCount: posts.length,
+        itemBuilder: (context, idx) {
+          final p = posts[idx];
+          final item = p['item'];
+          return Card(
+            margin: const EdgeInsets.all(8),
+            child: ListTile(
+              leading: item['image'] != null ? Image.network(item['image'], width: 56, height: 56, fit: BoxFit.cover) : null,
+              title: Text(item['title'] ?? ''),
+              subtitle: Text('${item['price'] ?? ''} ${item['currency'] ?? ''}'),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ItemScreen(api: widget.api, itemId: item['id']))),
+            ),
+          );
+        },
       ),
     );
   }

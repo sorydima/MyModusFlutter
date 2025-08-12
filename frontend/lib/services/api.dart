@@ -38,3 +38,15 @@ Future<Map<String, dynamic>> launchScrape(String url, String connector) async {
   if (res.statusCode == 200) return jsonDecode(res.body) as Map<String, dynamic>;
   throw Exception('Failed to launch: ' + res.body);
 }
+
+Future<Map<String,dynamic>> getFeed({int limit = 20, int offset = 0}) async {
+  final res = await http.get(Uri.parse('\$baseUrl/api/v1/feed?limit=\$limit&offset=\$offset'));
+  if (res.statusCode == 200) return jsonDecode(res.body);
+  return {'error': res.body};
+}
+
+Future<Map<String,dynamic>> getItem(int id) async {
+  final res = await http.get(Uri.parse('\$baseUrl/api/v1/items/\$id'));
+  if (res.statusCode == 200) return jsonDecode(res.body);
+  return {'error': res.body};
+}

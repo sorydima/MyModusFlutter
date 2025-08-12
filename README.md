@@ -39,3 +39,15 @@ curl -X POST http://localhost:8001/enqueue -H "Content-Type: application/json" -
 Notes:
 - For many marketplace pages you'll need Playwright (JS-rendered pages). The requests-based scraper works on simple static pages.
 - Respect robots.txt and marketplace ToS. Use polite delays, proxy rotation and don't overload target sites.
+
+
+## Feed & Items
+
+Run migrations (including items/feed/interaction) and start worker:
+
+```
+dart backend/bin/migrate.dart
+dart backend/bin/worker.dart
+```
+
+Then open frontend and go to Feed.

@@ -1,0 +1,47 @@
+name: Backend CI (with Postgres)
+
+on:
+  push:
+    branches: [ develop, main ]
+  pull_request:
+    branches: [ develop, main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: mymodus
+          POSTGRES_PASSWORD: mymodus_pass
+          POSTGRES_DB: mymodus_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd='pg_isready -U mymodus -d mymodus_db'
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - name: Install backend dependencies
+        working-directory: backend
+        run: dart pub get
+      - name: Wait for Postgres
+        run: |
+          for i in {1..10}; do
+            pg_isready -h localhost -p 5432 -U mymodus && break || sleep 2
+          done
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgres://mymodus:mymodus_pass@localhost:5432/mymodus_db
+        run: |
+          dart backend/bin/migrate.dart
+      - name: Run backend tests
+        working-directory: backend
+        run: dart test
