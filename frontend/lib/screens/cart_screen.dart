@@ -1,450 +1,512 @@
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
-import 'package:badges/badges.dart';
-import '../models/product_model.dart';
-import '../services/api_service.dart';
-import '../theme.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 
 class CartScreen extends StatefulWidget {
-  const CartScreen({Key? key}) : super(key: key);
+  const CartScreen({super.key});
 
   @override
   State<CartScreen> createState() => _CartScreenState();
 }
 
 class _CartScreenState extends State<CartScreen> {
-  final ApiService _apiService = ApiService();
-  List<Map<String, dynamic>> _cartItems = [];
-  bool _isLoading = false;
-  bool _isCheckingOut = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadCartItems();
-  }
-
-  @override
-  void dispose() {
-    _apiService.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadCartItems() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final items = await _apiService.getCart();
-      setState(() {
-        _cartItems = items;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading cart: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _removeFromCart(String productId) async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await _apiService.removeFromCart(productId);
-      
-      setState(() {
-        _cartItems.removeWhere((item) => item['productId'] == productId);
-        _isLoading = false;
-      });
-      
-      if (mounted) {
-        Fluttertoast.showToast(
-          msg: 'Item removed from cart',
-          toastLength: Toast.LENGTH_SHORT,
-        );
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error removing item: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _updateQuantity(String productId, int newQuantity) async {
-    if (newQuantity < 1) {
-      await _removeFromCart(productId);
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // TODO: Implement update quantity API call
-      await _apiService.addToCart(productId, newQuantity);
-      
-      setState(() {
-        final item = _cartItems.firstWhere((item) => item['productId'] == productId);
-        item['quantity'] = newQuantity;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating quantity: $e')),
-        );
-      }
-    }
-  }
-
-  void _onCheckout() async {
-    if (_cartItems.isEmpty) {
-      Fluttertoast.showToast(
-        msg: 'Your cart is empty',
-        toastLength: Toast.LENGTH_SHORT,
-      );
-      return;
-    }
-
-    setState(() {
-      _isCheckingOut = true;
-    });
-
-    try {
-      // TODO: Implement checkout process
-      final orderData = {
-        'items': _cartItems,
-        'total': _getTotalAmount(),
-      };
-      
-      await _apiService.createOrder(orderData);
-      
-      setState(() {
-        _cartItems.clear();
-        _isCheckingOut = false;
-      });
-      
-      if (mounted) {
-        Fluttertoast.showToast(
-          msg: 'Order placed successfully!',
-          toastLength: Toast.LENGTH_SHORT,
-        );
-        
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/orders',
-          (route) => false,
-        );
-      }
-    } catch (e) {
-      setState(() {
-        _isCheckingOut = false;
-      });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error placing order: $e')),
-        );
-      }
-    }
-  }
-
-  int _getTotalAmount() {
-    return _cartItems.fold(
-      0,
-      (total, item) => total + (item['price'] * item['quantity']),
-    );
-  }
-
-  String _formatPrice(int amount) {
-    return '₽${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]} ')}';
-  }
+  // Тестовые данные корзины
+  final List<Map<String, dynamic>> _cartItems = [
+    {
+      'id': '1',
+      'title': 'Nike Air Max 270',
+      'price': 12990,
+      'oldPrice': 15990,
+      'discount': 19,
+      'imageUrl': 'https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=Nike+Air+Max+270',
+      'brand': 'Nike',
+      'size': 'M',
+      'color': 'Красный',
+      'quantity': 1,
+    },
+    {
+      'id': '2',
+      'title': 'Adidas Ultraboost 22',
+      'price': 18990,
+      'oldPrice': null,
+      'discount': null,
+      'imageUrl': 'https://via.placeholder.com/400x400/4ECDC4/FFFFFF?text=Adidas+Ultraboost+22',
+      'brand': 'Adidas',
+      'size': 'L',
+      'color': 'Синий',
+      'quantity': 2,
+    },
+    {
+      'id': '3',
+      'title': 'Levi\'s 501 Original Jeans',
+      'price': 7990,
+      'oldPrice': 9990,
+      'discount': 20,
+      'imageUrl': 'https://via.placeholder.com/400x400/45B7D1/FFFFFF?text=Levis+501+Jeans',
+      'brand': 'Levi\'s',
+      'size': '32',
+      'color': 'Синий',
+      'quantity': 1,
+    },
+  ];
 
   @override
   Widget build(BuildContext context) {
+    final totalPrice = _cartItems.fold<int>(
+      0,
+      (sum, item) => sum + (item['price'] * item['quantity']),
+    );
+    
+    final totalDiscount = _cartItems.fold<int>(
+      0,
+      (sum, item) {
+        if (item['oldPrice'] != null) {
+          return sum + ((item['oldPrice'] - item['price']) * item['quantity']);
+        }
+        return sum;
+      },
+    );
+
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Shopping Cart'),
-        backgroundColor: Colors.white,
+        title: const Text(
+          'Корзина',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         actions: [
-          Badge(
-            badgeContent: Text(_cartItems.length.toString()),
-            position: BadgePosition.topEnd(top: 8, end: 8),
-            child: IconButton(
-              icon: const Icon(Icons.shopping_cart),
-              onPressed: () => Navigator.pushNamed(context, '/cart'),
+          TextButton(
+            onPressed: _cartItems.isEmpty ? null : () {
+              // TODO: Clear cart
+              setState(() {
+                _cartItems.clear();
+              });
+            },
+            child: Text(
+              'Очистить',
+              style: TextStyle(
+                color: _cartItems.isEmpty 
+                    ? Colors.grey 
+                    : Theme.of(context).colorScheme.error,
+              ),
             ),
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _buildCartContent(),
-      bottomNavigationBar: _cartItems.isNotEmpty
-          ? _buildCheckoutBar()
-          : null,
+      body: _cartItems.isEmpty
+          ? _buildEmptyCart()
+          : Column(
+              children: [
+                // Список товаров
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _cartItems.length,
+                    itemBuilder: (context, index) {
+                      final item = _cartItems[index];
+                      return _buildCartItem(item, index);
+                    },
+                  ),
+                ),
+                
+                // Итоговая информация
+                _buildOrderSummary(totalPrice, totalDiscount),
+              ],
+            ),
     );
   }
 
-  Widget _buildCartContent() {
-    if (_cartItems.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.shopping_cart_outlined,
-              size: 80,
-              color: Colors.grey,
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Your cart is empty',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Add some products to get started',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        // Cart items list
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: _cartItems.length,
-            itemBuilder: (context, index) {
-              final item = _cartItems[index];
-              return _buildCartItemCard(item);
-            },
+  Widget _buildEmptyCart() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.shopping_cart_outlined,
+            size: 100,
+            color: Colors.grey.shade400,
           ),
-        ),
-      ],
+          const SizedBox(height: 24),
+          Text(
+            'Корзина пуста',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Добавьте товары в корзину,\nчтобы сделать заказ',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.grey.shade500,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 32,
+                vertical: 16,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: const Text(
+              'Перейти к покупкам',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildCartItemCard(Map<String, dynamic> item) {
+  Widget _buildCartItem(Map<String, dynamic> item, int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Product image
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              item['imageUrl'],
-              width: 80,
-              height: 80,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            // Изображение товара
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: CachedNetworkImage(
+                imageUrl: item['imageUrl'],
+                width: 80,
+                height: 80,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Shimmer.fromColors(
+                  baseColor: Colors.grey.shade300,
+                  highlightColor: Colors.grey.shade100,
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    color: Colors.white,
+                  ),
+                ),
+                errorWidget: (context, url, error) => Container(
                   width: 80,
                   height: 80,
-                  color: Colors.grey[200],
-                  child: const Icon(Icons.image_not_supported),
-                );
-              },
+                  color: Colors.grey.shade300,
+                  child: const Icon(Icons.error, size: 30),
+                ),
+              ),
             ),
-          ),
-          
-          const SizedBox(width: 16),
-          
-          // Product info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Brand
-                if (item['brand'] != null && item['brand'].isNotEmpty)
+            
+            const SizedBox(width: 16),
+            
+            // Информация о товаре
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
                     item['brand'],
                     style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                
-                const SizedBox(height: 4),
-                
-                // Title
-                Text(
-                  item['title'],
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(height: 4),
+                  Text(
+                    item['title'],
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Text(
+                        'Размер: ${item['size']}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Text(
+                        'Цвет: ${item['color']}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(width: 16),
+            
+            // Управление количеством и цена
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // Кнопка удаления
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _cartItems.removeAt(index);
+                    });
+                  },
+                  icon: Icon(
+                    Icons.delete_outline,
+                    color: Colors.grey.shade400,
+                    size: 20,
                   ),
                 ),
                 
                 const SizedBox(height: 8),
                 
-                // Price
-                Text(
-                  _formatPrice(item['price']),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                // Управление количеством
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          if (item['quantity'] > 1) {
+                            setState(() {
+                              item['quantity']--;
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.remove, size: 16),
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                      ),
+                      Text(
+                        '${item['quantity']}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            item['quantity']++;
+                          });
+                        },
+                        icon: const Icon(Icons.add, size: 16),
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 
-                // Quantity controls
-                Row(
+                // Цена
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle_outline, size: 24),
-                      onPressed: () => _updateQuantity(item['productId'], item['quantity'] - 1),
-                    ),
-                    Text(
-                      '${item['quantity']}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                    if (item['oldPrice'] != null) ...[
+                      Text(
+                        '${(item['oldPrice'] / 1000).toStringAsFixed(1)}k ₽',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade500,
+                          decoration: TextDecoration.lineThrough,
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle_outline, size: 24),
-                      onPressed: () => _updateQuantity(item['productId'], item['quantity'] + 1),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red),
-                      onPressed: () => _removeFromCart(item['productId']),
+                      const SizedBox(height: 2),
+                    ],
+                    Text(
+                      '${(item['price'] / 1000).toStringAsFixed(1)}k ₽',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildCheckoutBar() {
+  Widget _buildOrderSummary(int totalPrice, int totalDiscount) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(24),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Total summary
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Total:',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Итоговая информация
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Итого:',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              Text(
-                _formatPrice(_getTotalAmount()),
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                Text(
+                  '${(totalPrice / 1000).toStringAsFixed(1)}k ₽',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
+              ],
+            ),
+            
+            if (totalDiscount > 0) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Экономия:',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Text(
+                    '-${(totalDiscount / 1000).toStringAsFixed(1)}k ₽',
+                    style: TextStyle(
+                      color: Colors.green.shade600,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ],
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Checkout button
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: _isCheckingOut ? null : _onCheckout,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            
+            const SizedBox(height: 24),
+            
+            // Кнопка оформления заказа
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () {
+                  // TODO: Navigate to checkout
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Переходим к оформлению заказа!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  'Оформить заказ',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              child: _isCheckingOut
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Text(
-                      'Proceed to Checkout',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Дополнительные опции
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      // TODO: Add to favorites
+                    },
+                    icon: const Icon(Icons.favorite_border),
+                    label: const Text('В избранное'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      // TODO: Share cart
+                    },
+                    icon: const Icon(Icons.share),
+                    label: const Text('Поделиться'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

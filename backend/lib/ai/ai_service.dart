@@ -1,21 +1,25 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:dotenv/dotenv.dart' as dotenv;
+import 'package:logger/logger.dart';
+import 'package:dotenv/dotenv.dart';
 
 class AIService {
-  final String apiKey;
-  final String baseUrl;
+  final Logger _logger = Logger();
+  late final String _apiKey;
+  late final String _baseUrl;
 
-  AIService():
-    apiKey = dotenv.env['OPENAI_API_KEY'] ?? '',
-    baseUrl = dotenv.env['OPENAI_API_BASE'] ?? 'https://api.openai.com/v1';
+  AIService() {
+    final env = DotEnv()..load();
+    _apiKey = env['OPENAI_API_KEY'] ?? '';
+    _baseUrl = env['OPENAI_BASE_URL'] ?? 'https://api.openai.com/v1';
+  }
 
   Future<String> generateDescription(String prompt) async {
-    if (apiKey.isEmpty) throw Exception('OPENAI_API_KEY not set');
-    final res = await http.post(Uri.parse('\$baseUrl/chat/completions'),
+    if (_apiKey.isEmpty) throw Exception('OPENAI_API_KEY not set');
+    final res = await http.post(Uri.parse('$_baseUrl/chat/completions'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer \$apiKey'
+        'Authorization': 'Bearer $_apiKey'
       },
       body: jsonEncode({
         'model': 'gpt-4o-mini', // placeholder: replace as needed
@@ -33,11 +37,11 @@ class AIService {
   }
 
   Future<Map<String, dynamic>> createEmbedding(String text) async {
-    if (apiKey.isEmpty) throw Exception('OPENAI_API_KEY not set');
-    final res = await http.post(Uri.parse('\$baseUrl/embeddings'),
+    if (_apiKey.isEmpty) throw Exception('OPENAI_API_KEY not set');
+    final res = await http.post(Uri.parse('$_baseUrl/embeddings'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer \$apiKey'
+        'Authorization': 'Bearer $_apiKey'
       },
       body: jsonEncode({
         'model': 'text-embedding-3-small',

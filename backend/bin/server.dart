@@ -1,158 +1,199 @@
-import 'dart:io';
 import 'dart:convert';
-import 'package:shelf/shelf_io.dart' as io;
+import 'dart:io';
 import 'package:shelf/shelf.dart';
+import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_router/shelf_router.dart';
+import 'package:shelf_cors_headers/shelf_cors_headers.dart';
 import 'package:dotenv/dotenv.dart' as dotenv;
-import '../lib/db.dart';
-import '../lib/connectors/scraper.dart';
-import '../lib/ai/ai_service.dart';
-import '../lib/web3/web3_service.dart';
-import '../lib/kms.dart';
+import 'package:logger/logger.dart';
+import 'package:redis/redis.dart';
+
+import '../lib/database.dart';
+import '../lib/services/scraping_service.dart';
+import '../lib/services/web3_service.dart';
+import '../lib/services/ai_service.dart';
+import '../lib/handlers/auth_handler.dart';
+import '../lib/handlers/product_handler.dart';
+import '../lib/handlers/scraping_handler.dart';
+import '../lib/handlers/web3_handler.dart';
 
 void main(List<String> args) async {
+  // Load environment variables
   dotenv.load();
-  final db = await DB.connect();
-
-  final app = Router();
-
-  app.get('/healthz', (Request req) => Response.ok('ok'));
-
-  app.get('/products', (Request req) async {
-    try {
-      final results = await db.conn.query('SELECT external_id, title, price, image, source_url FROM products ORDER BY created_at DESC LIMIT 100');
-      final list = results.map((r) => {
-        'external_id': r[0],
-        'title': r[1],
-        'price': r[2],
-        'image': r[3],
-        'source_url': r[4]
-      }).toList();
-      return Response.ok(jsonEncode(list), headers: {'content-type': 'application/json'});
-    } catch (e) {
-      return Response(500, body: jsonEncode({'error': e.toString()}), headers: {'content-type': 'application/json'});
+  
+  // Initialize logger
+  final logger = Logger();
+  logger.i('Starting MyModus Backend Server...');
+  
+  try {
+    // Initialize database
+    final db = DatabaseService();
+    await db.runMigrations();
+    logger.i('Database initialized successfully');
+    
+    // Initialize Redis
+    final redis = await RedisConnection.connect(
+      dotenv.env['REDIS_URL'] ?? 'redis://localhost:6379',
+    );
+    logger.i('Redis connected successfully');
+    
+    // Initialize services
+    final scrapingService = ScrapingService(db, redis);
+    final web3Service = Web3Service(
+      dotenv.env['ETHEREUM_RPC_URL'] ?? 'http://localhost:8545',
+    );
+    final aiService = AIService(
+      apiKey: dotenv.env['OPENAI_API_KEY'] ?? '',
+    );
+    
+    // Initialize Web3 contracts if addresses are provided
+    final escrowAddress = dotenv.env['ESCROW_CONTRACT_ADDRESS'];
+    final loyaltyTokenAddress = dotenv.env['LOYALTY_TOKEN_ADDRESS'];
+    final nftContractAddress = dotenv.env['NFT_CONTRACT_ADDRESS'];
+    
+    if (escrowAddress != null && loyaltyTokenAddress != null && nftContractAddress != null) {
+      await web3Service.initializeContracts(
+        escrowAddress: escrowAddress,
+        loyaltyTokenAddress: loyaltyTokenAddress,
+        nftContractAddress: nftContractAddress,
+      );
+      logger.i('Web3 contracts initialized successfully');
+    } else {
+      logger.w('Web3 contract addresses not provided, Web3 features will be disabled');
     }
-  });
-
-  app.post('/scrape', (Request req) async {
-    try {
-      final body = await req.readAsString();
-      final data = jsonDecode(body);
-      final url = data['url'] as String?;
-      if (url == null) return Response(400, body: jsonEncode({'error': 'url required'}), headers: {'content-type': 'application/json'});
-      final scraped = await scrapeProductFromUrl(url);
-      if (scraped == null) return Response(500, body: jsonEncode({'error': 'scrape failed'}), headers: {'content-type': 'application/json'});
-      // upsert product
-      await db.conn.transaction((ctx) async {
-        await ctx.query('''
-          INSERT INTO products (external_id, title, price, image, source_url, updated_at)
-          VALUES (@external_id, @title, @price, @image, @source_url, now())
-          ON CONFLICT (source_url) DO UPDATE SET
-            title = EXCLUDED.title,
-            price = EXCLUDED.price,
-            image = EXCLUDED.image,
-            updated_at = now();
-        ''', substitutionValues: {
-          'external_id': scraped['external_id'],
-          'title': scraped['title'],
-          'price': scraped['price'],
-          'image': scraped['image'],
-          'source_url': scraped['source_url']
-        });
-      });
-      return Response.ok(jsonEncode(scraped), headers: {'content-type': 'application/json'});
-    } catch (e) {
-      return Response(500, body: jsonEncode({'error': e.toString()}), headers: {'content-type': 'application/json'});
-    }
-  });
-
-  // AI endpoints
-  app.post('/ai/generate-description', (Request req) async {
-    try {
-      final body = await req.readAsString();
-      final data = jsonDecode(body);
-      final prompt = data['prompt'] as String? ?? '';
-      final svc = AIService();
-      final out = await svc.generateDescription(prompt);
-      return Response.ok(jsonEncode({'description': out}), headers: {'content-type': 'application/json'});
-    } catch (e) {
-      return Response(500, body: jsonEncode({'error': e.toString()}), headers: {'content-type': 'application/json'});
-    }
-  });
-
-  app.post('/ai/embedding', (Request req) async {
-    try {
-      final body = await req.readAsString();
-      final data = jsonDecode(body);
-      final text = data['text'] as String? ?? '';
-      final svc = AIService();
-      final out = await svc.createEmbedding(text);
-      return Response.ok(jsonEncode(out), headers: {'content-type': 'application/json'});
-    } catch (e) {
-      return Response(500, body: jsonEncode({'error': e.toString()}), headers: {'content-type': 'application/json'});
-    }
-  });
-
-  // Web3 endpoints
-  app.post('/wallets/create', (Request req) async {
-    try {
-      final body = await req.readAsString();
-      final data = jsonDecode(body);
-      final userId = data['user_id'];
-      final passphrase = data['passphrase'] ?? 'devpass';
-      // generate simple private key for dev (DO NOT use in prod)
-      final pk = '0x' + List.generate(32, (i) => (DateTime.now().microsecondsSinceEpoch + i).toRadixString(16)).join().padRight(64, '0').substring(0,64);
-      final web3 = Web3Service();
-      final address = (await web3.addressFromPrivateKey(pk)).hex;
-      // store key via KMS placeholder
-      final kms = KMS('./backend/kms_storage');
-      final id = address;
-      await kms.storeKey(id, pk, passphrase);
-      // save to DB
-      await db.conn.query('INSERT INTO wallets (user_id, address, kms_ref, metadata) VALUES (@user, @address, @ref, @meta)', substitutionValues: {
-        'user': userId,
-        'address': address,
-        'ref': id,
-        'meta': jsonEncode({'dev': true})
-      });
-      return Response.ok(jsonEncode({'address': address, 'kms_ref': id}), headers: {'content-type': 'application/json'});
-    } catch (e) {
-      return Response(500, body: jsonEncode({'error': e.toString()}), headers: {'content-type': 'application/json'});
-    }
-  });
-
-  app.get('/wallets/<address>/balance', (Request req, String address) async {
-    try {
-      final web3 = Web3Service();
-      final bal = await web3.getBalance(address);
-      return Response.ok(jsonEncode({'balance': bal.getInEther.toString()}), headers: {'content-type': 'application/json'});
-    } catch (e) {
-      return Response(500, body: jsonEncode({'error': e.toString()}), headers: {'content-type': 'application/json'});
-    }
-  });
-
-  app.post('/web3/order-log', (Request req) async {
-    try {
-      final body = await req.readAsString();
-      final data = jsonDecode(body);
-      await db.conn.query('INSERT INTO orders_chain_log (order_id, user_id, order_hash, tx_hash, chain, status) VALUES (@order, @user, @oh, @tx, @chain, @st)', substitutionValues: {
-        'order': data['order_id'],
-        'user': data['user_id'],
-        'oh': data['order_hash'],
-        'tx': data['tx_hash'],
-        'chain': data['chain'] ?? 'ethereum',
-        'st': data['status'] ?? 'created'
-      });
-      return Response.ok(jsonEncode({'status': 'ok'}), headers: {'content-type': 'application/json'});
-    } catch (e) {
-      return Response(500, body: jsonEncode({'error': e.toString()}), headers: {'content-type': 'application/json'});
-    }
-  });
-
-  final handler = Pipeline().addMiddleware(logRequests()).addHandler(app);
-  final port = int.parse(Platform.environment['PORT'] ?? '8080');
-  final server = await io.serve(handler, '0.0.0.0', port);
-  print('Server running on port \${server.port}');
+    
+    // Initialize handlers
+    final authHandler = AuthHandler(db);
+    final productHandler = ProductHandler(db, aiService);
+    final scrapingHandler = ScrapingHandler(scrapingService);
+    final web3Handler = Web3Handler(web3Service);
+    
+    // Create router
+    final router = Router();
+    
+    // Health check
+    router.get('/health', (Request request) {
+      return Response.ok(
+        jsonEncode({
+          'status': 'healthy',
+          'timestamp': DateTime.now().toIso8601String(),
+          'version': '1.0.0',
+        }),
+        headers: {'content-type': 'application/json'},
+      );
+    });
+    
+    // API routes
+    router.mount('/api/auth', authHandler.router);
+    router.mount('/api/products', productHandler.router);
+    router.mount('/api/scraping', scrapingHandler.router);
+    router.mount('/api/web3', web3Handler.router);
+    
+    // Admin routes
+    router.get('/admin/stats', (Request request) async {
+      try {
+        final scrapingStats = await scrapingService.getScrapingStats();
+        final dbStats = await _getDatabaseStats(db);
+        
+        return Response.ok(
+          jsonEncode({
+            'scraping': scrapingStats,
+            'database': dbStats,
+            'timestamp': DateTime.now().toIso8601String(),
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      } catch (e) {
+        logger.e('Error getting admin stats: $e');
+        return Response.internalServerError(
+          body: jsonEncode({'error': 'Failed to get statistics'}),
+          headers: {'content-type': 'application/json'},
+        );
+      }
+    });
+    
+    // Create pipeline with CORS and logging
+    final pipeline = const Pipeline()
+        .addMiddleware(corsHeaders())
+        .addMiddleware(_loggingMiddleware(logger))
+        .addHandler(router);
+    
+    // Start server
+    final port = int.parse(dotenv.env['PORT'] ?? '8080');
+    final server = await io.serve(
+      pipeline,
+      InternetAddress.anyIPv4,
+      port,
+    );
+    
+    logger.i('Server running on port ${server.port}');
+    
+    // Graceful shutdown
+    ProcessSignal.sigint.watch().listen((_) async {
+      logger.i('Shutting down server...');
+      
+      scrapingService.dispose();
+      web3Service.dispose();
+      aiService.dispose();
+      await redis.close();
+      await db.closeConnection();
+      
+      await server.close();
+      exit(0);
+    });
+    
+  } catch (e, stackTrace) {
+    logger.e('Failed to start server: $e');
+    logger.e('Stack trace: $stackTrace');
+    exit(1);
+  }
 }
 
-// couldn't insert new routes
+/// Logging middleware
+Middleware _loggingMiddleware(Logger logger) {
+  return (Handler handler) {
+    return (Request request) async {
+      final startTime = DateTime.now();
+      
+      try {
+        final response = await handler(request);
+        
+        final duration = DateTime.now().difference(startTime);
+        logger.i('${request.method} ${request.url} - ${response.statusCode} - ${duration.inMilliseconds}ms');
+        
+        return response;
+      } catch (e, stackTrace) {
+        final duration = DateTime.now().difference(startTime);
+        logger.e('${request.method} ${request.url} - ERROR - ${duration.inMilliseconds}ms');
+        logger.e('Error: $e');
+        logger.e('Stack trace: $stackTrace');
+        
+        return Response.internalServerError(
+          body: jsonEncode({'error': 'Internal server error'}),
+          headers: {'content-type': 'application/json'},
+        );
+      }
+    };
+  };
+}
+
+/// Get database statistics
+Future<Map<String, dynamic>> _getDatabaseStats(DatabaseService db) async {
+  try {
+    final conn = await db.getConnection();
+    
+    final userCount = await conn.query('SELECT COUNT(*) FROM users');
+    final productCount = await conn.query('SELECT COUNT(*) FROM products');
+    final orderCount = await conn.query('SELECT COUNT(*) FROM orders');
+    
+    await conn.close();
+    
+    return {
+      'users': userCount.first.first,
+      'products': productCount.first.first,
+      'orders': orderCount.first.first,
+    };
+  } catch (e) {
+    return {'error': e.toString()};
+  }
+}

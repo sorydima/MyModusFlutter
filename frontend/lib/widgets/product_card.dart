@@ -1,372 +1,241 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:badges/badges.dart';
-import '../models/product_model.dart';
-import '../theme.dart';
+import '../screens/product_detail_screen.dart';
 
 class ProductCard extends StatelessWidget {
-  final ProductModel product;
-  final VoidCallback? onTap;
-  final VoidCallback? onFavorite;
-  final bool isFavorite;
-  final bool showFavorite;
-  final bool showCart;
-  final VoidCallback? onAddToCart;
+  final String id;
+  final String title;
+  final int price;
+  final int? oldPrice;
+  final int? discount;
+  final String imageUrl;
+  final String brand;
+  final double rating;
+  final int reviewCount;
 
   const ProductCard({
-    Key? key,
-    required this.product,
-    this.onTap,
-    this.onFavorite,
-    this.isFavorite = false,
-    this.showFavorite = true,
-    this.showCart = true,
-    this.onAddToCart,
-  }) : super(key: key);
+    super.key,
+    required this.id,
+    required this.title,
+    required this.price,
+    this.oldPrice,
+    this.discount,
+    required this.imageUrl,
+    required this.brand,
+    required this.rating,
+    required this.reviewCount,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Product image with discount badge
-          Stack(
-            children: [
-              GestureDetector(
-                onTap: onTap,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductDetailScreen(
+              productId: id,
+              title: title,
+              price: price,
+              oldPrice: oldPrice,
+              discount: discount,
+              imageUrl: imageUrl,
+              brand: brand,
+              rating: rating,
+              reviewCount: reviewCount,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Изображение товара
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
                   child: CachedNetworkImage(
-                    imageUrl: product.imageUrl,
-                    width: double.infinity,
+                    imageUrl: imageUrl,
                     height: 200,
+                    width: double.infinity,
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Shimmer.fromColors(
-                      baseColor: Colors.grey[300]!,
-                      highlightColor: Colors.grey[100]!,
+                      baseColor: Colors.grey.shade300,
+                      highlightColor: Colors.grey.shade100,
                       child: Container(
-                        width: double.infinity,
                         height: 200,
-                        color: Colors.grey[300],
+                        width: double.infinity,
+                        color: Colors.white,
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
-                      width: double.infinity,
                       height: 200,
-                      color: Colors.grey[200],
-                      child: const Icon(Icons.error, color: Colors.grey),
+                      width: double.infinity,
+                      color: Colors.grey.shade300,
+                      child: const Icon(Icons.error, size: 50),
                     ),
                   ),
                 ),
-              ),
-              
-              // Source badge
-              Positioned(
-                top: 8,
-                left: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    product.sourceIcon,
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ),
-              ),
-              
-              // Discount badge
-              if (product.hasDiscount)
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      product.discountText,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                
+                // Badge скидки
+                if (discount != null)
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '-$discount%',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              
-              // Favorite button
-              if (showFavorite)
+                
+                // Кнопка избранного
                 Positioned(
-                  bottom: 8,
-                  right: 8,
+                  top: 12,
+                  right: 12,
                   child: Container(
-                    width: 36,
-                    height: 36,
+                    width: 32,
+                    height: 32,
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                      color: Colors.white.withOpacity(0.9),
+                      shape: BoxShape.circle,
                     ),
                     child: IconButton(
-                      icon: Icon(
-                        isFavorite ? Icons.favorite : Icons.favorite_border,
-                        color: isFavorite ? Colors.red : Colors.grey,
-                        size: 20,
+                      onPressed: () {
+                        // TODO: Add to favorites
+                      },
+                      icon: const Icon(
+                        Icons.favorite_border,
+                        size: 16,
+                        color: Colors.grey,
                       ),
-                      onPressed: onFavorite,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
                   ),
                 ),
-            ],
-          ),
-          
-          // Product info
-          Padding(
-            padding: const EdgeInsets.only(top: 12, left: 4, right: 4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Brand
-                if (product.brand.isNotEmpty)
-                  Text(
-                    product.brand,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                
-                const SizedBox(height: 4),
-                
-                // Title
-                Text(
-                  product.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    height: 1.4,
-                  ),
-                ),
-                
-                const SizedBox(height: 8),
-                
-                // Rating
-                Row(
-                  children: [
-                    Icon(
-                      Icons.star,
-                      color: Colors.amber,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      product.ratingText,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '(${product.reviewCountText})',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 8),
-                
-                // Price
-                Row(
-                  children: [
-                    // Current price
-                    Text(
-                      product.formattedPrice,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    
-                    // Old price
-                    if (product.hasDiscount)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: Text(
-                          product.formattedOldPrice,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
-                            decoration: TextDecoration.lineThrough,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                
-                // Add to cart button
-                if (showCart)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 36,
-                      child: ElevatedButton(
-                        onPressed: onAddToCart,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryColor,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: const Text(
-                          'В корзину',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ProductCardSkeleton extends StatelessWidget {
-  const ProductCardSkeleton({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image skeleton
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Shimmer.fromColors(
-              baseColor: Colors.grey[300]!,
-              highlightColor: Colors.grey[100]!,
-              child: Container(
-                width: double.infinity,
-                height: 200,
-                color: Colors.grey[300],
-              ),
-            ),
-          ),
-          
-          // Info skeleton
-          Padding(
-            padding: const EdgeInsets.only(top: 12, left: 4, right: 4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Brand skeleton
-                Shimmer.fromColors(
-                  baseColor: Colors.grey[300]!,
-                  highlightColor: Colors.grey[100]!,
-                  child: Container(
-                    width: 60,
-                    height: 12,
-                    color: Colors.grey[300],
+            
+            // Информация о товаре
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Бренд
+                  Text(
+                    brand,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                
-                const SizedBox(height: 8),
-                
-                // Title skeleton
-                Shimmer.fromColors(
-                  baseColor: Colors.grey[300]!,
-                  highlightColor: Colors.grey[100]!,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  
+                  const SizedBox(height: 4),
+                  
+                  // Название товара
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      height: 1.3,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  const SizedBox(height: 8),
+                  
+                  // Рейтинг и отзывы
+                  Row(
                     children: [
-                      Container(
-                        width: double.infinity,
-                        height: 14,
-                        color: Colors.grey[300],
+                      Icon(
+                        Icons.star,
+                        size: 16,
+                        color: Colors.amber.shade600,
                       ),
-                      const SizedBox(height: 4),
-                      Container(
-                        width: MediaQuery.of(context).size.width * 0.7,
-                        height: 14,
-                        color: Colors.grey[300],
+                      const SizedBox(width: 4),
+                      Text(
+                        rating.toString(),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '($reviewCount)',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
                       ),
                     ],
                   ),
-                ),
-                
-                const SizedBox(height: 8),
-                
-                // Rating skeleton
-                Shimmer.fromColors(
-                  baseColor: Colors.grey[300]!,
-                  highlightColor: Colors.grey[100]!,
-                  child: Container(
-                    width: 80,
-                    height: 12,
-                    color: Colors.grey[300],
+                  
+                  const SizedBox(height: 12),
+                  
+                  // Цена
+                  Row(
+                    children: [
+                      Text(
+                        '${(price / 1000).toStringAsFixed(1)}k ₽',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      if (oldPrice != null) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          '${(oldPrice! / 1000).toStringAsFixed(1)}k ₽',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade500,
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                ),
-                
-                const SizedBox(height: 8),
-                
-                // Price skeleton
-                Shimmer.fromColors(
-                  baseColor: Colors.grey[300]!,
-                  highlightColor: Colors.grey[100]!,
-                  child: Container(
-                    width: 100,
-                    height: 16,
-                    color: Colors.grey[300],
-                  ),
-                ),
-                
-                const SizedBox(height: 12),
-                
-                // Button skeleton
-                Shimmer.fromColors(
-                  baseColor: Colors.grey[300]!,
-                  highlightColor: Colors.grey[100]!,
-                  child: Container(
-                    width: double.infinity,
-                    height: 36,
-                    color: Colors.grey[300],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -1,18 +1,115 @@
 version: '3.8'
+
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: mymodus_postgres
+    environment:
+      POSTGRES_DB: mymodus
+      POSTGRES_USER: mymodus
+      POSTGRES_PASSWORD: mymodus123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    networks:
+      - mymodus_network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: mymodus_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - mymodus_network
+
+  # Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mymodus_backend
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgres://mymodus:mymodus123@postgres:5432/mymodus
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your_jwt_secret_here
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+      - /app/.dart_tool
+    networks:
+      - mymodus_network
+
+  # Frontend Service (Web)
+  frontend_web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mymodus_frontend_web
+    ports:
+      - "3000:3000"
+    environment:
+      - API_BASE_URL=http://localhost:8080
+    depends_on:
+      - backend
+    networks:
+      - mymodus_network
+
+  # Bot Service (Python)
   bot_service:
     build:
-      context: .
-      dockerfile: bot_service/Dockerfile
+      context: ./bot_service
+      dockerfile: Dockerfile
+    container_name: mymodus_bot_service
     environment:
-      - BOT_DB=/data/bot.db
-      - PLAYWRIGHT_INSTALL=false
+      - DATABASE_URL=postgres://mymodus:mymodus123@postgres:5432/mymodus
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
     volumes:
       - ./bot_service:/app
-      - bot_data:/data
+    networks:
+      - mymodus_network
+
+  # IPFS Node (for Web4 storage)
+  ipfs:
+    image: ipfs/kubo:latest
+    container_name: mymodus_ipfs
     ports:
-      - "8001:8001"
-    restart: unless-stopped
+      - "4001:4001"
+      - "5001:5001"
+      - "8080:8080"
+    volumes:
+      - ipfs_data:/data/ipfs
+    networks:
+      - mymodus_network
+
+  # Ethereum Node (Ganache for development)
+  ethereum:
+    image: trufflesuite/ganache-cli:latest
+    container_name: mymodus_ethereum
+    ports:
+      - "8545:8545"
+    command: ganache-cli --host 0.0.0.0 --port 8545 --accounts 10 --defaultBalanceEther 1000
+    networks:
+      - mymodus_network
 
 volumes:
-  bot_data:
+  postgres_data:
+  redis_data:
+  ipfs_data:
+
+networks:
+  mymodus_network:
+    driver: bridge

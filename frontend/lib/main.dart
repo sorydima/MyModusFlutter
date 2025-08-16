@@ -1,48 +1,52 @@
 import 'package:flutter/material.dart';
-import 'services/api.dart';
-import 'screens/login_screen.dart';
-import 'screens/register_screen.dart';
-import 'screens/feed_screen.dart';
+import 'package:provider/provider.dart';
+import 'providers/auth_provider.dart';
+import 'screens/home_screen.dart';
+import 'screens/auth_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const MyModusApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyModusApp extends StatelessWidget {
+  const MyModusApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    final api = ApiService('http://localhost:8080');
-    return MaterialApp(
-      title: 'MyModus',
-      home: Home(api: api),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+      ],
+      child: MaterialApp(
+        title: 'MyModus',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF6750A4),
+            brightness: Brightness.light,
+          ),
+          useMaterial3: true,
+          fontFamily: 'Inter',
+        ),
+        home: const AuthWrapper(),
+      ),
     );
   }
 }
 
-class Home extends StatelessWidget {
-  final ApiService api;
-  const Home({super.key, required this.api});
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('MyModus')),
-      body: Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          ElevatedButton(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => FeedScreen(api: api))),
-              child: const Text('Feed')),
-          const SizedBox(height: 8),
-          ElevatedButton(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => LoginScreen(api: api))),
-              child: const Text('Login')),
-          const SizedBox(height: 8),
-          ElevatedButton(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => RegisterScreen(api: api))),
-              child: const Text('Register')),
-        ]),
-      ),
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        if (authProvider.isAuthenticated) {
+          return const HomeScreen();
+        } else {
+          return const AuthScreen();
+        }
+      },
     );
   }
 }

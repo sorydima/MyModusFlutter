@@ -1,27 +1,33 @@
+import 'dart:async';
 import 'package:postgres/postgres.dart';
-import 'package:dotenv/dotenv.dart' as dotenv;
+import 'package:logger/logger.dart';
+import 'package:dotenv/dotenv.dart';
 import 'models.dart';
 
 class DatabaseService {
   static PostgreSQLConnection? _connection;
+  static final Logger _logger = Logger();
   
   static Future<PostgreSQLConnection> getConnection() async {
-    if (_connection == null) {
-      final env = dotenv.env;
-      final uri = env['DATABASE_URL'] ?? 'postgres://user:password@localhost:5432/mymodus';
-      final uriObj = Uri.parse(uri);
-      
-      _connection = PostgreSQLConnection(
-        uriObj.host,
-        uriObj.port,
-        uriObj.path.replaceFirst('/', ''),
-        username: uriObj.userInfo.split(':').first,
-        password: uriObj.userInfo.split(':').last,
-        useSSL: false,
-      );
-      
-      await _connection!.open();
+    if (_connection != null && !_connection!.isClosed) {
+      return _connection!;
     }
+    
+    final env = DotEnv()..load();
+    final uri = env['DATABASE_URL'] ?? 'postgres://mymodus:mymodus123@localhost:5432/mymodus';
+    final uriObj = Uri.parse(uri);
+    
+    _connection = PostgreSQLConnection(
+      uriObj.host,
+      uriObj.port,
+      uriObj.path.replaceFirst('/', ''),
+      username: uriObj.userInfo.split(':').first,
+      password: uriObj.userInfo.split(':').last,
+      useSSL: false,
+    );
+    
+    await _connection!.open();
+    _logger.i('Database connection established');
     return _connection!;
   }
 
@@ -30,6 +36,11 @@ class DatabaseService {
       await _connection!.close();
       _connection = null;
     }
+  }
+
+  /// Закрытие соединения (для использования в других сервисах)
+  static Future<void> close() async {
+    await closeConnection();
   }
 
   static Future<void> runMigrations() async {
@@ -223,7 +234,7 @@ class DatabaseService {
     
     // Check if data already exists
     final result = await conn.execute('SELECT COUNT(*) FROM categories;');
-    if (result.first[0] == 0) {
+    if ((result.first as List).first == 0) {
       // Insert initial categories
       await conn.execute('''
         INSERT INTO categories (name, description, icon) VALUES 
