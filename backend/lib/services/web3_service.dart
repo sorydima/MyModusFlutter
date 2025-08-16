@@ -1,303 +1,458 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
+import 'dart:io';
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart' as http;
-import 'package:bip39/bip39.dart';
-import 'package:ed25519_hd_key/ed25519_hd_key.dart';
-import 'package:logger/logger.dart';
+import 'package:uuid/uuid.dart';
+import '../database.dart';
 import '../models.dart';
 
 class Web3Service {
-  final Web3Client _client;
-  final Logger _logger = Logger();
+  final DatabaseService _db;
+  late final Web3Client _client;
+  late final Credentials _credentials;
   
-  // Contract addresses (will be set after deployment)
-  String? _escrowContractAddress;
-  String? _loyaltyTokenAddress;
-  String? _nftContractAddress;
+  // Network configuration
+  static const String _ethereumRpcUrl = 'https://mainnet.infura.io/v3/YOUR_INFURA_KEY';
+  static const String _polygonRpcUrl = 'https://polygon-rpc.com';
+  static const String _testnetRpcUrl = 'https://goerli.infura.io/v3/YOUR_INFURA_KEY';
   
-  // Contract ABIs
-  late final ContractAbi _escrowAbi;
-  late final ContractAbi _loyaltyTokenAbi;
-  late final ContractAbi _nftAbi;
+  // Contract addresses (deploy these first)
+  static const String _nftContractAddress = '0x...'; // Your NFT contract
+  static const String _loyaltyContractAddress = '0x...'; // Your loyalty contract
   
-  Web3Service(String rpcUrl) : _client = Web3Client(rpcUrl, http.Client());
+  // IPFS configuration
+  static const String _ipfsGateway = 'https://ipfs.io/ipfs/';
+  static const String _ipfsApiUrl = 'https://ipfs.infura.io:5001/api/v0';
   
-  /// Initialize contracts after deployment
-  Future<void> initializeContracts({
-    required String escrowAddress,
-    required String loyaltyTokenAddress,
-    required String nftContractAddress,
-  }) async {
-    _escrowContractAddress = escrowAddress;
-    _loyaltyTokenAddress = loyaltyTokenAddress;
-    _nftContractAddress = nftContractAddress;
-    
-    // Load contract ABIs
-    await _loadContractABIs();
-    
-    _logger.i('Web3 contracts initialized successfully');
+  Web3Service(this._db) {
+    _initializeWeb3();
   }
-  
-  /// Load contract ABIs from files
-  Future<void> _loadContractABIs() async {
+
+  /// Инициализация Web3 клиента
+  Future<void> _initializeWeb3() async {
     try {
-      // Load ABI files (you'll need to create these)
-      _escrowAbi = ContractAbi.fromJson(
-        jsonDecode(await _loadABIFile('escrow_abi.json')),
-        'Escrow',
-      );
+      // Подключаемся к Ethereum mainnet
+      _client = Web3Client(_ethereumRpcUrl, http.Client());
       
-      _loyaltyTokenAbi = ContractAbi.fromJson(
-        jsonDecode(await _loadABIFile('loyalty_token_abi.json')),
-        'LoyaltyToken',
-      );
+      // Создаем тестовые учетные данные (в продакшене используйте реальные ключи)
+      _credentials = EthPrivateKey.fromHex('0x...'); // Your private key
       
-      _nftAbi = ContractAbi.fromJson(
-        jsonDecode(await _loadABIFile('nft_abi.json')),
-        'MyModusNFT',
-      );
+      print('Web3 service initialized successfully');
     } catch (e) {
-      _logger.e('Error loading contract ABIs: $e');
+      print('Error initializing Web3 service: $e');
       rethrow;
     }
   }
-  
-  /// Load ABI file content
-  Future<String> _loadABIFile(String filename) async {
-    // Implementation depends on your file structure
-    // For now, return empty JSON
-    return '[]';
-  }
-  
-  /// Create wallet from mnemonic
-  Future<EthPrivateKey> createWalletFromMnemonic(String mnemonic) async {
-    try {
-      if (!isValidMnemonic(mnemonic)) {
-        throw ArgumentError('Invalid mnemonic phrase');
-      }
-      
-      final seed = mnemonicToSeed(mnemonic);
-      final master = await Ed25519HdWallet.fromSeed(seed);
-      final privateKey = await master.derivePrivateKey(0);
-      
-      return EthPrivateKey(privateKey);
-    } catch (e) {
-      _logger.e('Error creating wallet from mnemonic: $e');
-      rethrow;
-    }
-  }
-  
-  /// Get wallet balance
-  Future<EtherAmount> getBalance(EthereumAddress address) async {
-    try {
-      return await _client.getBalance(address);
-    } catch (e) {
-      _logger.e('Error getting balance for $address: $e');
-      rethrow;
-    }
-  }
-  
-  /// Send transaction
-  Future<String> sendTransaction({
-    required EthPrivateKey fromKey,
-    required EthereumAddress to,
-    required EtherAmount amount,
-    String? data,
+
+  /// Создание NFT токена
+  Future<NFT> mintNFT({
+    required String userId,
+    required String name,
+    required String description,
+    required String imageUrl,
+    required Map<String, dynamic> attributes,
   }) async {
     try {
-      final fromAddress = fromKey.address;
+      // Загружаем метаданные в IPFS
+      final metadata = {
+        'name': name,
+        'description': description,
+        'image': imageUrl,
+        'attributes': attributes,
+        'created_at': DateTime.now().toIso8601String(),
+      };
       
-      // Get current gas price
-      final gasPrice = await _client.getGasPrice();
+      final ipfsHash = await uploadToIPFS(jsonEncode(metadata));
       
-      // Estimate gas
-      final gas = await _client.estimateGas(
-        sender: fromAddress,
-        to: to,
-        value: amount,
-        data: data != null ? Uint8List.fromList(utf8.encode(data)) : null,
+      // Создаем NFT в базе данных
+      final nft = NFT(
+        id: const Uuid().v4(),
+        tokenId: const Uuid().v4(),
+        contractAddress: _nftContractAddress,
+        ownerWalletId: '', // Will be set after wallet creation
+        tokenURI: 'ipfs://$ipfsHash',
+        name: name,
+        description: description,
+        imageUrl: imageUrl,
+        attributes: attributes,
+        type: 'collectible',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
       
-      // Create transaction
-      final transaction = Transaction(
-        to: to,
-        value: amount,
-        gasPrice: gasPrice,
-        maxGas: gas,
-        data: data != null ? Uint8List.fromList(utf8.encode(data)) : null,
-      );
+      // Сохраняем в базу данных
+      await _saveNFT(nft);
       
-      // Sign and send transaction
-      final signature = fromKey.signTransaction(transaction);
-      final hash = await _client.sendRawTransaction(signature);
+      // TODO: Вызвать смарт-контракт для минтинга
+      // await _mintNFTOnChain(nft, ipfsHash);
       
-      _logger.i('Transaction sent: $hash');
-      return hash;
+      return nft;
     } catch (e) {
-      _logger.e('Error sending transaction: $e');
+      print('Error minting NFT: $e');
       rethrow;
     }
   }
-  
-  /// Create escrow for product purchase
-  Future<String> createEscrow({
-    required EthPrivateKey buyerKey,
-    required String productId,
-    required EtherAmount amount,
-    required int sellerId,
+
+  /// Загрузка файла в IPFS
+  Future<String> uploadToIPFS(String content, {String? fileName}) async {
+    try {
+      final uri = Uri.parse('$_ipfsApiUrl/add');
+      
+      final request = http.MultipartRequest('POST', uri);
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          utf8.encode(content),
+          filename: fileName ?? 'file.txt',
+        ),
+      );
+      
+      final response = await request.send();
+      final responseData = await response.stream.bytesToString();
+      final jsonResponse = jsonDecode(responseData);
+      
+      if (response.statusCode == 200) {
+        final hash = jsonResponse['Hash'] as String;
+        
+        // Сохраняем информацию о файле в базу данных
+        await _saveIPFSFile(hash, fileName ?? 'file.txt', content.length);
+        
+        return hash;
+      } else {
+        throw Exception('Failed to upload to IPFS: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error uploading to IPFS: $e');
+      rethrow;
+    }
+  }
+
+  /// Получение файла из IPFS
+  Future<String> getFromIPFS(String hash) async {
+    try {
+      final response = await http.get(Uri.parse('$_ipfsGateway$hash'));
+      
+      if (response.statusCode == 200) {
+        return response.body;
+      } else {
+        throw Exception('Failed to get from IPFS: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error getting from IPFS: $e');
+      rethrow;
+    }
+  }
+
+  /// Создание токена лояльности
+  Future<LoyaltyToken> createLoyaltyToken({
+    required String userId,
+    required String initialBalance,
   }) async {
     try {
-      if (_escrowContractAddress == null) {
-        throw StateError('Escrow contract not initialized');
-      }
-      
-      final escrowContract = DeployedContract(
-        _escrowAbi,
-        EthereumAddress.fromHex(_escrowContractAddress!),
+      // Создаем токен в базе данных
+      final loyaltyToken = LoyaltyToken(
+        id: const Uuid().v4(),
+        userId: userId,
+        contractAddress: _loyaltyContractAddress,
+        balance: initialBalance,
+        totalEarned: initialBalance,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
       
-      final createEscrowFunction = escrowContract.function('createEscrow');
+      // Сохраняем в базу данных
+      await _saveLoyaltyToken(loyaltyToken);
       
-      final data = createEscrowFunction.encode([
-        productId,
-        sellerId,
-        BigInt.from(amount.getInWei),
-      ]);
+      // TODO: Вызвать смарт-контракт для создания токена
+      // await _createLoyaltyTokenOnChain(loyaltyToken);
       
-      return await sendTransaction(
-        fromKey: buyerKey,
-        to: EthereumAddress.fromHex(_escrowContractAddress!),
-        amount: EtherAmount.zero(),
-        data: data,
-      );
+      return loyaltyToken;
     } catch (e) {
-      _logger.e('Error creating escrow: $e');
+      print('Error creating loyalty token: $e');
       rethrow;
     }
   }
-  
-  /// Release escrow funds to seller
-  Future<String> releaseEscrow({
-    required EthPrivateKey buyerKey,
-    required String escrowId,
+
+  /// Передача токенов лояльности
+  Future<void> transferLoyaltyTokens({
+    required String fromUserId,
+    required String toUserId,
+    required String amount,
   }) async {
     try {
-      if (_escrowContractAddress == null) {
-        throw StateError('Escrow contract not initialized');
-      }
+      // Обновляем балансы в базе данных
+      await _updateLoyaltyTokenBalance(fromUserId, amount, isSubtract: true);
+      await _updateLoyaltyTokenBalance(toUserId, amount, isSubtract: false);
       
-      final escrowContract = DeployedContract(
-        _escrowAbi,
-        EthereumAddress.fromHex(_escrowContractAddress!),
-      );
+      // TODO: Вызвать смарт-контракт для передачи токенов
+      // await _transferLoyaltyTokensOnChain(fromUserId, toUserId, amount);
       
-      final releaseFunction = escrowContract.function('releaseEscrow');
-      
-      final data = releaseFunction.encode([escrowId]);
-      
-      return await sendTransaction(
-        fromKey: buyerKey,
-        to: EthereumAddress.fromHex(_escrowContractAddress!),
-        amount: EtherAmount.zero(),
-        data: data,
-      );
+      print('Loyalty tokens transferred successfully');
     } catch (e) {
-      _logger.e('Error releasing escrow: $e');
+      print('Error transferring loyalty tokens: $e');
       rethrow;
     }
   }
-  
-  /// Mint loyalty tokens
-  Future<String> mintLoyaltyTokens({
-    required EthPrivateKey ownerKey,
-    required EthereumAddress to,
-    required BigInt amount,
+
+  /// Получение баланса токенов лояльности
+  Future<String> getLoyaltyTokenBalance(String userId) async {
+    try {
+      final conn = await _db.getConnection();
+      
+      final result = await conn.execute('''
+        SELECT balance FROM loyalty_tokens 
+        WHERE user_id = @userId
+      ''', substitutionValues: {'userId': userId});
+      
+      await conn.close();
+      
+      if (result.isNotEmpty) {
+        return result.first[0] as String;
+      }
+      
+      return '0';
+    } catch (e) {
+      print('Error getting loyalty token balance: $e');
+      return '0';
+    }
+  }
+
+  /// Подключение кошелька пользователя
+  Future<void> connectWallet({
+    required String userId,
+    required String walletAddress,
+    String walletType = 'ethereum',
   }) async {
     try {
-      if (_loyaltyTokenAddress == null) {
-        throw StateError('Loyalty token contract not initialized');
+      final conn = await _db.getConnection();
+      
+      // Проверяем, есть ли уже кошелек у пользователя
+      final existingWallet = await conn.execute('''
+        SELECT id FROM user_wallets 
+        WHERE user_id = @userId
+      ''', substitutionValues: {'userId': userId});
+      
+      if (existingWallet.isNotEmpty) {
+        // Обновляем существующий кошелек
+        await conn.execute('''
+          UPDATE user_wallets 
+          SET wallet_address = @address, wallet_type = @type, updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = @userId
+        ''', substitutionValues: {
+          'address': walletAddress,
+          'type': walletType,
+          'userId': userId,
+        });
+      } else {
+        // Создаем новый кошелек
+        await conn.execute('''
+          INSERT INTO user_wallets (id, user_id, wallet_address, wallet_type, is_primary)
+          VALUES (@id, @userId, @address, @type, true)
+        ''', substitutionValues: {
+          'id': const Uuid().v4(),
+          'userId': userId,
+          'address': walletAddress,
+          'type': walletType,
+        });
       }
       
-      final tokenContract = DeployedContract(
-        _loyaltyTokenAbi,
-        EthereumAddress.fromHex(_loyaltyTokenAddress!),
-      );
+      await conn.close();
       
-      final mintFunction = tokenContract.function('mint');
-      
-      final data = mintFunction.encode([to, amount]);
-      
-      return await sendTransaction(
-        fromKey: ownerKey,
-        to: EthereumAddress.fromHex(_loyaltyTokenAddress!),
-        amount: EtherAmount.zero(),
-        data: data,
-      );
+      print('Wallet connected successfully for user $userId');
     } catch (e) {
-      _logger.e('Error minting loyalty tokens: $e');
+      print('Error connecting wallet: $e');
       rethrow;
     }
   }
-  
-  /// Mint NFT badge
-  Future<String> mintNFTBadge({
-    required EthPrivateKey ownerKey,
-    required EthereumAddress to,
-    required String tokenURI,
-  }) async {
+
+  /// Получение NFT пользователя
+  Future<List<NFT>> getUserNFTs(String userId) async {
     try {
-      if (_nftContractAddress == null) {
-        throw StateError('NFT contract not initialized');
-      }
+      final conn = await _db.getConnection();
       
-      final nftContract = DeployedContract(
-        _nftAbi,
-        EthereumAddress.fromHex(_nftContractAddress!),
-      );
+      final result = await conn.execute('''
+        SELECT n.* FROM nfts n
+        JOIN user_wallets w ON n.owner_wallet_id = w.id
+        WHERE w.user_id = @userId
+      ''', substitutionValues: {'userId': userId});
       
-      final mintFunction = nftContract.function('mint');
+      await conn.close();
       
-      final data = mintFunction.encode([to, tokenURI]);
-      
-      return await sendTransaction(
-        fromKey: ownerKey,
-        to: EthereumAddress.fromHex(_nftContractAddress!),
-        amount: EtherAmount.zero(),
-        data: data,
-      );
+      return result.map((row) => NFT.fromRow(row)).toList();
     } catch (e) {
-      _logger.e('Error minting NFT badge: $e');
+      print('Error getting user NFTs: $e');
+      return [];
+    }
+  }
+
+  /// Получение статистики Web3
+  Future<Map<String, dynamic>> getWeb3Stats() async {
+    try {
+      final conn = await _db.getConnection();
+      
+      // Статистика NFT
+      final nftStats = await conn.execute('''
+        SELECT 
+          COUNT(*) as total_nfts,
+          COUNT(CASE WHEN is_minted = true THEN 1 END) as minted_nfts,
+          COUNT(CASE WHEN type = 'badge' THEN 1 END) as badge_nfts,
+          COUNT(CASE WHEN type = 'coupon' THEN 1 END) as coupon_nfts
+        FROM nfts
+      ''');
+      
+      // Статистика токенов лояльности
+      final loyaltyStats = await conn.execute('''
+        SELECT 
+          COUNT(*) as total_users,
+          SUM(CAST(balance AS DECIMAL)) as total_balance,
+          AVG(CAST(balance AS DECIMAL)) as avg_balance
+        FROM loyalty_tokens
+      ''');
+      
+      // Статистика IPFS
+      final ipfsStats = await conn.execute('''
+        SELECT 
+          COUNT(*) as total_files,
+          SUM(file_size) as total_size,
+          COUNT(CASE WHEN is_pinned = true THEN 1 END) as pinned_files
+        FROM ipfs_files
+      ''');
+      
+      await conn.close();
+      
+      return {
+        'nft_stats': nftStats.isNotEmpty ? nftStats.first : {},
+        'loyalty_stats': loyaltyStats.isNotEmpty ? loyaltyStats.first : {},
+        'ipfs_stats': ipfsStats.isNotEmpty ? ipfsStats.first : {},
+        'network_info': {
+          'ethereum_rpc': _ethereumRpcUrl,
+          'polygon_rpc': _polygonRpcUrl,
+          'testnet_rpc': _testnetRpcUrl,
+        },
+      };
+      
+    } catch (e) {
+      print('Error getting Web3 stats: $e');
+      return {};
+    }
+  }
+
+  /// Сохранение NFT в базу данных
+  Future<void> _saveNFT(NFT nft) async {
+    try {
+      final conn = await _db.getConnection();
+      
+      await conn.execute('''
+        INSERT INTO nfts (
+          id, token_id, contract_id, owner_wallet_id, token_uri,
+          name, description, image_url, attributes, type
+        ) VALUES (
+          @id, @tokenId, @contractId, @ownerWalletId, @tokenUri,
+          @name, @description, @imageUrl, @attributes, @type
+        )
+      ''', substitutionValues: {
+        'id': nft.id,
+        'tokenId': nft.tokenId,
+        'contractId': nft.contractId,
+        'ownerWalletId': nft.ownerWalletId,
+        'tokenUri': nft.tokenURI,
+        'name': nft.name,
+        'description': nft.description,
+        'imageUrl': nft.imageUrl,
+        'attributes': nft.attributes != null ? jsonEncode(nft.attributes) : null,
+        'type': nft.type,
+      });
+      
+      await conn.close();
+    } catch (e) {
+      print('Error saving NFT: $e');
       rethrow;
     }
   }
-  
-  /// Get transaction receipt
-  Future<TransactionReceipt?> getTransactionReceipt(String hash) async {
+
+  /// Сохранение информации об IPFS файле
+  Future<void> _saveIPFSFile(String hash, String fileName, int fileSize) async {
     try {
-      return await _client.getTransactionReceipt(hash);
+      final conn = await _db.getConnection();
+      
+      await conn.execute('''
+        INSERT INTO ipfs_files (ipfs_hash, file_name, file_size, file_type)
+        VALUES (@hash, @fileName, @fileSize, 'metadata')
+        ON CONFLICT (ipfs_hash) DO NOTHING
+      ''', substitutionValues: {
+        'hash': hash,
+        'fileName': fileName,
+        'fileSize': fileSize,
+      });
+      
+      await conn.close();
     } catch (e) {
-      _logger.e('Error getting transaction receipt: $e');
-      return null;
+      print('Error saving IPFS file info: $e');
     }
   }
-  
-  /// Get transaction status
-  Future<String> getTransactionStatus(String hash) async {
+
+  /// Сохранение токена лояльности
+  Future<void> _saveLoyaltyToken(LoyaltyToken token) async {
     try {
-      final receipt = await getTransactionReceipt(hash);
-      if (receipt == null) {
-        return 'pending';
+      final conn = await _db.getConnection();
+      
+      await conn.execute('''
+        INSERT INTO loyalty_tokens (
+          id, user_id, contract_id, balance, total_earned
+        ) VALUES (
+          @id, @userId, @contractId, @balance, @totalEarned
+        )
+      ''', substitutionValues: {
+        'id': token.id,
+        'userId': token.userId,
+        'contractId': token.contractId,
+        'balance': token.balance,
+        'totalEarned': token.totalEarned,
+      });
+      
+      await conn.close();
+    } catch (e) {
+      print('Error saving loyalty token: $e');
+      rethrow;
+    }
+  }
+
+  /// Обновление баланса токенов лояльности
+  Future<void> _updateLoyaltyTokenBalance(String userId, String amount, {required bool isSubtract}) async {
+    try {
+      final conn = await _db.getConnection();
+      
+      if (isSubtract) {
+        await conn.execute('''
+          UPDATE loyalty_tokens 
+          SET balance = CAST(balance AS DECIMAL) - CAST(@amount AS DECIMAL)
+          WHERE user_id = @userId
+        ''', substitutionValues: {
+          'amount': amount,
+          'userId': userId,
+        });
+      } else {
+        await conn.execute('''
+          UPDATE loyalty_tokens 
+          SET balance = CAST(balance AS DECIMAL) + CAST(@amount AS DECIMAL),
+              total_earned = CAST(total_earned AS DECIMAL) + CAST(@amount AS DECIMAL)
+          WHERE user_id = @userId
+        ''', substitutionValues: {
+          'amount': amount,
+          'userId': userId,
+        });
       }
-      return receipt.status ? 'success' : 'failed';
+      
+      await conn.close();
     } catch (e) {
-      _logger.e('Error getting transaction status: $e');
-      return 'unknown';
+      print('Error updating loyalty token balance: $e');
+      rethrow;
     }
   }
-  
-  /// Cleanup resources
-  void dispose() {
-    _client.dispose();
+
+  /// Закрытие соединений
+  Future<void> dispose() async {
+    await _client.dispose();
   }
 }

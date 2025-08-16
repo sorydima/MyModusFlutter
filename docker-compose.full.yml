@@ -1,63 +1,276 @@
 version: '3.8'
+
 services:
-  db:
-    image: postgres:15
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: mymodus_postgres
     environment:
-      POSTGRES_USER: mymodus
-      POSTGRES_PASSWORD: example
-      POSTGRES_DB: mymodus_db
+      POSTGRES_DB: mymodus
+      POSTGRES_USER: mymodus_user
+      POSTGRES_PASSWORD: mymodus_password
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
+    networks:
+      - mymodus_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mymodus_user -d mymodus"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  backend:
-    build: ./backend
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: mymodus_redis
+    command: redis-server --appendonly yes --requirepass mymodus_redis_password
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - mymodus_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # IPFS Node
+  ipfs:
+    image: ipfs/kubo:latest
+    container_name: mymodus_ipfs
     environment:
-      DATABASE_URL: postgres://mymodus:example@db:5432/mymodus_db
-      JWT_SECRET: replace_in_prod
-      PORT: 8080
-      SCRAPE_DELAY_MS: 2000
-    depends_on:
-      - db
+      - IPFS_PROFILE=server
+    volumes:
+      - ipfs_data:/data/ipfs
+      - ipfs_staging:/export
+    ports:
+      - "4001:4001"   # P2P
+      - "5001:5001"   # API
+      - "8080:8080"   # Gateway
+    networks:
+      - mymodus_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ipfs", "dag", "stat", "/ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Ethereum Node (Ganache for development)
+  ethereum:
+    image: trufflesuite/ganache-cli:latest
+    container_name: mymodus_ethereum
+    command: ganache-cli --host 0.0.0.0 --port 8545 --accounts 10 --deterministic --mnemonic "myth like bonus scare over problem client lizard pioneer submit female collect"
+    ports:
+      - "8545:8545"
+    networks:
+      - mymodus_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8545"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MyModus Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mymodus_backend
+    environment:
+      - DATABASE_URL=postgresql://mymodus_user:mymodus_password@postgres:5432/mymodus
+      - REDIS_URL=redis://:mymodus_redis_password@redis:6379
+      - ETHEREUM_RPC_URL=http://ethereum:8545
+      - IPFS_API_URL=http://ipfs:5001
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - NODE_ENV=production
+    volumes:
+      - ./backend:/app
+      - /app/.dart_tool
+      - /app/build
     ports:
       - "8080:8080"
-    volumes:
-      - ./backend:/app/backend
-
-  worker:
-    build: ./backend
-    command: ["dart", "run", "bin/worker.dart"]
-    environment:
-      DATABASE_URL: postgres://mymodus:example@db:5432/mymodus_db
-      SCRAPE_DELAY_MS: 2000
     depends_on:
-      - db
-    volumes:
-      - ./backend:/app/backend
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ethereum:
+        condition: service_healthy
+      ipfs:
+        condition: service_healthy
+    networks:
+      - mymodus_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  bot_service:
-    build:
-      context: .
-      dockerfile: bot_service/Dockerfile
-    environment:
-      - BOT_DB=/data/bot.db
-      - PLAYWRIGHT_INSTALL=false
-    volumes:
-      - ./bot_service:/app
-      - bot_data:/data
-    ports:
-      - "8001:8001"
-    depends_on:
-      - backend
-
+  # Flutter Web Frontend
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mymodus_frontend
+    environment:
+      - API_BASE_URL=http://backend:8080/api/v1
+      - WEB3_PROVIDER_URL=http://ethereum:8545
+      - IPFS_GATEWAY_URL=http://ipfs:8080/ipfs
     ports:
-      - "8000:80"
+      - "3000:80"
     depends_on:
       - backend
+    networks:
+      - mymodus_network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: mymodus_nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - mymodus_network
+    restart: unless-stopped
+
+  # Monitoring Stack
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mymodus_prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - mymodus_network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mymodus_grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - mymodus_network
+    restart: unless-stopped
+
+  # Log Aggregation
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
+    container_name: mymodus_elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - mymodus_network
+    restart: unless-stopped
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.8.0
+    container_name: mymodus_kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - mymodus_network
+    restart: unless-stopped
+
+  # Filebeat for log collection
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.8.0
+    container_name: mymodus_filebeat
+    user: root
+    volumes:
+      - ./monitoring/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - elasticsearch
+    networks:
+      - mymodus_network
+    restart: unless-stopped
+
+  # Backup Service
+  backup:
+    image: postgres:15-alpine
+    container_name: mymodus_backup
+    environment:
+      - POSTGRES_DB=mymodus
+      - POSTGRES_USER=mymodus_user
+      - POSTGRES_PASSWORD=mymodus_password
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+    command: sh -c "chmod +x /backup.sh && /backup.sh"
+    depends_on:
+      - postgres
+    networks:
+      - mymodus_network
+    restart: "no"
 
 volumes:
-  db_data:
-  bot_data:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  ipfs_data:
+    driver: local
+  ipfs_staging:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+
+networks:
+  mymodus_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Health checks and dependencies
+x-healthcheck: &healthcheck
+  test: ["CMD", "curl", "-f", "http://localhost/health"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 40s

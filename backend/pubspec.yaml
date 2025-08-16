@@ -1,5 +1,5 @@
 name: mymodus_backend
-description: MyModus backend (shelf) with Web3 and AI integration
+description: MyModus backend (shelf) with Web3, AI, and marketplace parsing integration
 version: 1.0.0
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -35,7 +35,7 @@ dependencies:
   # AI & ML
   openai_dart: ^0.3.0
   
-  # File Storage
+  # File Storage & IPFS
   path: ^1.8.3
   mime: ^1.0.4
   

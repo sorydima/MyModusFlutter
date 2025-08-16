@@ -21,26 +21,42 @@ class WildberriesScraper extends BaseScraper {
     
     try {
       // Get popular categories
-      await driver.get('$baseUrl/catalog/0/search.aspx?sort=popular');
-      await Future.delayed(Duration(seconds: 3));
+      final categories = [
+        '/catalog/zhenshchinam',
+        '/catalog/muzhchinam',
+        '/catalog/detyam',
+        '/catalog/obuv',
+        '/catalog/aksessuary'
+      ];
       
-      // Extract product links
-      final productLinks = await _extractProductLinks(driver);
-      
-      // Scrape each product
-      for (int i = 0; i < productLinks.length; i++) {
+      for (final category in categories) {
         try {
-          final product = await _scrapeProductPage(driver, productLinks[i]);
-          if (product != null) {
-            products.add(product);
+          await driver.get('$baseUrl$category');
+          await Future.delayed(Duration(seconds: 3));
+          
+          // Extract product links
+          final productLinks = await _extractProductLinks(driver);
+          
+          // Scrape each product
+          for (int i = 0; i < productLinks.length && i < 20; i++) { // Limit to 20 products per category
+            try {
+              final product = await _scrapeProductPage(driver, productLinks[i]);
+              if (product != null) {
+                products.add(product);
+              }
+              
+              // Add delay to avoid being blocked
+              await Future.delayed(Duration(seconds: 2));
+              
+              print('Scraped ${i + 1}/${productLinks.length} products from $category');
+            } catch (e) {
+              print('Error scraping product ${productLinks[i]}: $e');
+            }
           }
           
-          // Add delay to avoid being blocked
-          await Future.delayed(Duration(seconds: 2));
-          
-          print('Scraped ${i + 1}/${productLinks.length} products');
+          await Future.delayed(Duration(seconds: 5)); // Delay between categories
         } catch (e) {
-          print('Error scraping product ${productLinks[i]}: $e');
+          print('Error scraping category $category: $e');
         }
       }
     } catch (e) {
@@ -59,29 +75,57 @@ class WildberriesScraper extends BaseScraper {
       // Wait for products to load
       await Future.delayed(Duration(seconds: 3));
       
-      // Get product elements
+      // Scroll down to load more products
+      await _scrollDown(driver);
+      
+      // Get product elements - Wildberries uses different selectors
       final productElements = await driver.findElementsByCss('.product-card__link');
       
       for (final element in productElements) {
-        final href = await element.getAttribute('href');
-        if (href != null && href.contains('catalog')) {
-          links.add(href);
+        try {
+          final href = await element.getAttribute('href');
+          if (href != null && href.contains('/catalog/')) {
+            final fullUrl = href.startsWith('http') ? href : '$baseUrl$href';
+            links.add(fullUrl);
+          }
+        } catch (e) {
+          print('Error extracting link from element: $e');
         }
       }
       
-      // Also get pagination and scrape multiple pages
-      final paginationElements = await driver.findElementsByCss('.pagination__next');
-      if (paginationElements.isNotEmpty) {
-        await Future.delayed(Duration(seconds: 2));
-        await driver.get(paginationElements.first.getAttribute('href')!);
-        final moreLinks = await _extractProductLinks(driver);
-        links.addAll(moreLinks);
+      // Also try alternative selectors
+      if (links.isEmpty) {
+        final altElements = await driver.findElementsByCss('.product-card');
+        for (final element in altElements) {
+          try {
+            final linkElement = await element.findElementByCss('a');
+            final href = await linkElement.getAttribute('href');
+            if (href != null && href.contains('/catalog/')) {
+              final fullUrl = href.startsWith('http') ? href : '$baseUrl$href';
+              links.add(fullUrl);
+            }
+          } catch (e) {
+            // Continue to next element
+          }
+        }
       }
+      
     } catch (e) {
       print('Error extracting product links: $e');
     }
     
     return links.toSet().toList(); // Remove duplicates
+  }
+
+  Future<void> _scrollDown(selenium.WebDriver driver) async {
+    try {
+      for (int i = 0; i < 3; i++) {
+        await driver.executeScript('window.scrollTo(0, document.body.scrollHeight);');
+        await Future.delayed(Duration(seconds: 1));
+      }
+    } catch (e) {
+      print('Error scrolling: $e');
+    }
   }
 
   Future<Product?> _scrapeProductPage(selenium.WebDriver driver, String productUrl) async {
@@ -117,7 +161,7 @@ class WildberriesScraper extends BaseScraper {
         imageUrl: imageUrl,
         productUrl: productUrl,
         brand: brand,
-        category: 'Одежда', // TODO: Implement category detection
+        category: _extractCategory(productUrl),
         sku: _extractSku(document),
         specifications: _extractSpecifications(document),
         stock: _extractStock(document),
@@ -136,18 +180,23 @@ class WildberriesScraper extends BaseScraper {
 
   String _extractTitle(parser.Document document) {
     try {
-      // Try multiple selectors
+      // Try multiple selectors for Wildberries
       final selectors = [
         '.product-page__title',
-        '.product-title__text',
-        '.product-name',
-        'h1'
+        '.product-page__header h1',
+        '.product-page__title h1',
+        '.product-page__header .product-page__title',
+        'h1',
+        '.product-card__title'
       ];
       
       for (final selector in selectors) {
         final element = document.querySelector(selector);
         if (element != null) {
-          return element.text.trim();
+          final title = element.text.trim();
+          if (title.isNotEmpty) {
+            return title;
+          }
         }
       }
     } catch (e) {
@@ -158,12 +207,23 @@ class WildberriesScraper extends BaseScraper {
 
   int? _extractPrice(parser.Document document) {
     try {
-      final priceElement = document.querySelector('.product-price__current');
-      if (priceElement != null) {
-        final priceText = priceElement.text.trim();
-        final priceMatch = RegExp(r'(\d+(?:\s\d+)*)').firstMatch(priceText);
-        if (priceMatch != null) {
-          return int.parse(priceMatch.group(1)!.replaceAll(' ', ''));
+      // Try multiple selectors for price
+      final selectors = [
+        '.product-page__price .price-block__price',
+        '.product-page__price .price-block__final-price',
+        '.price-block__price',
+        '.price-block__final-price',
+        '.product-page__price'
+      ];
+      
+      for (final selector in selectors) {
+        final priceElement = document.querySelector(selector);
+        if (priceElement != null) {
+          final priceText = priceElement.text.trim();
+          final priceMatch = RegExp(r'(\d+(?:\s\d+)*)').firstMatch(priceText);
+          if (priceMatch != null) {
+            return int.parse(priceMatch.group(1)!.replaceAll(' ', ''));
+          }
         }
       }
     } catch (e) {
@@ -174,7 +234,7 @@ class WildberriesScraper extends BaseScraper {
 
   int? _extractOldPrice(parser.Document document) {
     try {
-      final oldPriceElement = document.querySelector('.product-price__old');
+      final oldPriceElement = document.querySelector('.price-block__old-price');
       if (oldPriceElement != null) {
         final oldPriceText = oldPriceElement.text.trim();
         final priceMatch = RegExp(r'(\d+(?:\s\d+)*)').firstMatch(oldPriceText);
@@ -190,10 +250,9 @@ class WildberriesScraper extends BaseScraper {
 
   int? _extractDiscount(parser.Document document) {
     try {
-      final discountElement = document.querySelector('.product-price__discount');
+      final discountElement = document.querySelector('.price-block__discount');
       if (discountElement != null) {
-        final discountText = discountElement.text.trim();
-        final discountMatch = RegExp(r'(\d+)%').firstMatch(discountText);
+        final discountMatch = RegExp(r'(-?\d+)%').firstMatch(discountElement.text);
         if (discountMatch != null) {
           return int.parse(discountMatch.group(1)!);
         }
@@ -206,11 +265,21 @@ class WildberriesScraper extends BaseScraper {
 
   String _extractImageUrl(parser.Document document) {
     try {
-      final imageElement = document.querySelector('.product-page__main-image');
-      if (imageElement != null) {
-        final src = imageElement.attributes['src'] ?? imageElement.attributes['data-src'];
-        if (src != null) {
-          return src.startsWith('http') ? src : 'https:$src';
+      // Try multiple selectors for images
+      final selectors = [
+        '.product-page__image img',
+        '.product-page__gallery img',
+        '.product-card__image img',
+        '.product-page__image .image-slider img'
+      ];
+      
+      for (final selector in selectors) {
+        final imageElement = document.querySelector(selector);
+        if (imageElement != null) {
+          final src = imageElement.attributes['src'] ?? imageElement.attributes['data-src'];
+          if (src != null) {
+            return src.startsWith('http') ? src : 'https:$src';
+          }
         }
       }
     } catch (e) {
@@ -221,9 +290,15 @@ class WildberriesScraper extends BaseScraper {
 
   String _extractBrand(parser.Document document) {
     try {
-      final brandElement = document.querySelector('.product-brand__text');
+      final brandElement = document.querySelector('.product-page__brand');
       if (brandElement != null) {
         return brandElement.text.trim();
+      }
+      
+      // Try to extract from title
+      final title = _extractTitle(document);
+      if (title.contains(' ')) {
+        return title.split(' ').first;
       }
     } catch (e) {
       print('Error extracting brand: $e');
@@ -233,10 +308,13 @@ class WildberriesScraper extends BaseScraper {
 
   double? _extractRating(parser.Document document) {
     try {
-      final ratingElement = document.querySelector('.product-rating__value');
+      final ratingElement = document.querySelector('.product-page__rating');
       if (ratingElement != null) {
         final ratingText = ratingElement.text.trim();
-        return double.parse(ratingText);
+        final ratingMatch = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(ratingText);
+        if (ratingMatch != null) {
+          return double.parse(ratingMatch.group(1)!);
+        }
       }
     } catch (e) {
       print('Error extracting rating: $e');
@@ -246,7 +324,7 @@ class WildberriesScraper extends BaseScraper {
 
   int? _extractReviewCount(parser.Document document) {
     try {
-      final reviewElement = document.querySelector('.product-rating__count');
+      final reviewElement = document.querySelector('.product-page__reviews-count');
       if (reviewElement != null) {
         final reviewText = reviewElement.text.trim();
         final reviewMatch = RegExp(r'(\d+)').firstMatch(reviewText);
@@ -274,7 +352,7 @@ class WildberriesScraper extends BaseScraper {
 
   String? _extractSku(parser.Document document) {
     try {
-      final skuElement = document.querySelector('.product-article');
+      final skuElement = document.querySelector('.product-page__article');
       if (skuElement != null) {
         return skuElement.text.trim();
       }
@@ -286,7 +364,7 @@ class WildberriesScraper extends BaseScraper {
 
   Map<String, dynamic>? _extractSpecifications(parser.Document document) {
     try {
-      final specsElement = document.querySelector('.product-features');
+      final specsElement = document.querySelector('.product-page__specifications');
       if (specsElement != null) {
         final specs = <String, dynamic>{};
         final rows = specsElement.querySelectorAll('tr');
@@ -308,10 +386,10 @@ class WildberriesScraper extends BaseScraper {
 
   int _extractStock(parser.Document document) {
     try {
-      final stockElement = document.querySelector('.product-stock');
+      final stockElement = document.querySelector('.product-page__stock');
       if (stockElement != null) {
-        final stockText = stockElement.text.trim();
-        if (stockText.toLowerCase().contains('в наличии')) {
+        final stockText = stockElement.text.trim().toLowerCase();
+        if (stockText.contains('в наличии') || stockText.contains('есть')) {
           return 10; // Default stock for available items
         }
       }
@@ -319,6 +397,19 @@ class WildberriesScraper extends BaseScraper {
       print('Error extracting stock: $e');
     }
     return 0;
+  }
+
+  String _extractCategory(String url) {
+    try {
+      if (url.contains('/zhenshchinam')) return 'Женщинам';
+      if (url.contains('/muzhchinam')) return 'Мужчинам';
+      if (url.contains('/detyam')) return 'Детям';
+      if (url.contains('/obuv')) return 'Обувь';
+      if (url.contains('/aksessuary')) return 'Аксессуары';
+      return 'Одежда';
+    } catch (e) {
+      return 'Одежда';
+    }
   }
 
   String _extractSourceId(String url) {
