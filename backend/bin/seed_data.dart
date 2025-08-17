@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:postgres/postgres.dart';
-import 'package:dotenv/dotenv.dart' as dotenv;
+import 'package:dotenv/dotenv.dart';
 
 void main() async {
   // Загрузка переменных окружения
-  dotenv.load();
+  DotEnv()..load();
   
   // Подключение к базе данных
-  final uri = dotenv.env['DATABASE_URL'] ?? 'postgres://mymodus:mymodus123@localhost:5432/mymodus';
+  final uri = DotEnv().env['DATABASE_URL'] ?? 'postgres://mymodus:mymodus123@localhost:5432/mymodus';
   final uriObj = Uri.parse(uri);
   
   final connection = PostgreSQLConnection(
@@ -85,16 +85,20 @@ Future<void> _createProducts(PostgreSQLConnection connection) async {
   print('🛍️ Создание товаров...');
   
   // Получаем ID категорий
-  final categoriesResult = await connection.query('SELECT id FROM categories ORDER BY name');
+  final categoriesResult = await connection.query('SELECT id, name FROM categories ORDER BY name');
   if (categoriesResult.isEmpty) {
     print('❌ Категории не найдены. Сначала создайте категории.');
     return;
   }
   
-  final footwearId = categoriesResult[0][0].toString(); // Обувь
-  final clothingId = categoriesResult[1][0].toString(); // Одежда
-  final accessoriesId = categoriesResult[2][0].toString(); // Аксессуары
-  
+  final Map<String, String> categoryNameToId = {
+    for (var row in categoriesResult) row[1] as String: row[0].toString()
+  };
+
+  final footwearId = categoryNameToId['Обувь'];
+  final clothingId = categoryNameToId['Одежда'];
+  final accessoriesId = categoryNameToId['Аксессуары'];
+
   final products = [
     {
       'title': 'Nike Air Max 270',
@@ -105,7 +109,7 @@ Future<void> _createProducts(PostgreSQLConnection connection) async {
       'image_url': 'https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=Nike+Air+Max+270',
       'product_url': 'https://example.com/nike-air-max-270',
       'brand': 'Nike',
-      'category_id': footwearId,
+      'category_id': footwearId, // Обувь
       'sku': 'NIKE-AM270-001',
       'specifications': jsonEncode({
         'material': 'Mesh',
@@ -127,7 +131,7 @@ Future<void> _createProducts(PostgreSQLConnection connection) async {
       'image_url': 'https://via.placeholder.com/400x400/4ECDC4/FFFFFF?text=Adidas+Ultraboost+22',
       'product_url': 'https://example.com/adidas-ultraboost-22',
       'brand': 'Adidas',
-      'category_id': footwearId,
+      'category_id': footwearId, // Обувь
       'sku': 'ADIDAS-UB22-001',
       'specifications': jsonEncode({
         'material': 'Primeknit',
@@ -149,7 +153,7 @@ Future<void> _createProducts(PostgreSQLConnection connection) async {
       'image_url': 'https://via.placeholder.com/400x400/45B7D1/FFFFFF?text=Levis+501+Jeans',
       'product_url': 'https://example.com/levis-501-jeans',
       'brand': 'Levi\'s',
-      'category_id': clothingId,
+      'category_id': clothingId, // Одежда
       'sku': 'LEVIS-501-001',
       'specifications': jsonEncode({
         'material': '100% Cotton',
@@ -171,7 +175,7 @@ Future<void> _createProducts(PostgreSQLConnection connection) async {
       'image_url': 'https://via.placeholder.com/400x400/96CEB4/FFFFFF?text=Apple+Watch+Series+8',
       'product_url': 'https://example.com/apple-watch-series-8',
       'brand': 'Apple',
-      'category_id': accessoriesId,
+      'category_id': accessoriesId, // Аксессуары
       'sku': 'APPLE-WATCH8-001',
       'specifications': jsonEncode({
         'display': 'Always-On Retina',

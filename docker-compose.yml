@@ -41,9 +41,14 @@ services:
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=your_jwt_secret_here
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ETHEREUM_RPC_URL=http://ethereum:8545
+      - IPFS_API_URL=http://ipfs:5001
+      - IPFS_GATEWAY_URL=http://ipfs:8080/ipfs
     depends_on:
       - postgres
       - redis
+      - ipfs
+      - ethereum
     volumes:
       - ./backend:/app
       - /app/.dart_tool
@@ -87,9 +92,9 @@ services:
     image: ipfs/kubo:latest
     container_name: mymodus_ipfs
     ports:
-      - "4001:4001"
-      - "5001:5001"
-      - "8080:8080"
+      - "4001:4001" # Swarm port
+      - "5001:5001" # API port
+      - "8080:8080" # Gateway port
     volumes:
       - ipfs_data:/data/ipfs
     networks:

@@ -1,9 +1,37 @@
 {
-  "name": "mymodus-escrow",
+  "name": "mymodus-smart-contracts",
   "version": "1.0.0",
+  "description": "Smart contracts for MyModus fashion social commerce platform",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost",
+    "deploy:testnet": "hardhat run scripts/deploy.js --network testnet",
+    "deploy:mainnet": "hardhat run scripts/deploy.js --network mainnet",
+    "verify:testnet": "hardhat verify --network testnet",
+    "verify:mainnet": "hardhat verify --network mainnet",
+    "node": "hardhat node",
+    "clean": "hardhat clean"
+  },
+  "keywords": [
+    "ethereum",
+    "smart-contracts",
+    "nft",
+    "defi",
+    "fashion",
+    "ecommerce"
+  ],
+  "author": "MyModus Team",
+  "license": "MIT",
   "devDependencies": {
-    "hardhat": "^2.12.7",
-    "@nomiclabs/hardhat-ethers": "^2.0.6",
-    "ethers": "^5.7.2"
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@openzeppelin/contracts": "^5.0.0",
+    "hardhat": "^2.19.0",
+    "hardhat-deploy": "^0.12.0",
+    "hardhat-deploy-ethers": "^0.11.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.0"
   }
 }
