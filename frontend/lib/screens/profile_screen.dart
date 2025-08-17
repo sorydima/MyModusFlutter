@@ -8,6 +8,16 @@ import 'ai_dashboard_screen.dart';
 import 'ai_stylist_screen.dart';
 import 'ai_post_generator_screen.dart';
 import 'ai_trend_analysis_screen.dart';
+import 'ai_content_moderator_screen.dart';
+import 'ai_fashion_designer_screen.dart';
+import 'ai_fashion_consultant_screen.dart';
+import 'ai_shopping_assistant_screen.dart';
+import 'ai_outfit_planner_screen.dart';
+import 'ai_style_matcher_screen.dart';
+import 'ai_product_image_generator_screen.dart';
+import 'ai_virtual_tryon_screen.dart';
+import 'ai_personal_shopper_screen.dart';
+import 'ai_color_matcher_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -379,6 +389,166 @@ class ProfileScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const AITrendAnalysisScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildAICard(
+            context,
+            'AI Модератор контента',
+            'Безопасность контента',
+            Icons.security,
+            Colors.red,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AIContentModeratorScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildAICard(
+            context,
+            'AI Дизайнер моды',
+            'Создание дизайнов',
+            Icons.auto_fix_high,
+            Colors.purple,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AIFashionDesignerScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildAICard(
+            context,
+            'AI Консультант по стилю',
+            'Персональные советы',
+            Icons.psychology,
+            Colors.teal,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AIFashionConsultantScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildAICard(
+            context,
+            'AI Помощник покупок',
+            'Умный шопинг',
+            Icons.shopping_cart,
+            Colors.indigo,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AIShoppingAssistantScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildAICard(
+            context,
+            'AI Планировщик образов',
+            'Создание луков',
+            Icons.checkroom,
+            Colors.deepOrange,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AIOutfitPlannerScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildAICard(
+            context,
+            'AI Подбор стилей',
+            'Совместимость стилей',
+            Icons.compare,
+            Colors.cyan,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AIStyleMatcherScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildAICard(
+            context,
+            'AI Генератор Изображений',
+            'Создание изображений товаров',
+            Icons.auto_awesome,
+            Colors.indigo,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AIProductImageGeneratorScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildAICard(
+            context,
+            'AI Виртуальная Примерка',
+            'Примерка одежды онлайн',
+            Icons.camera_alt,
+            Colors.teal,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AIVirtualTryOnScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildAICard(
+            context,
+            'AI Персональный Шоппер',
+            'Умный помощник покупок',
+            Icons.person_outline,
+            Colors.orange,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AIPersonalShopperScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildAICard(
+            context,
+            'AI Подбор Цветов',
+            'Идеальные цветовые сочетания',
+            Icons.palette,
+            Colors.deepPink,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AIColorMatcherScreen(),
                 ),
               );
             },

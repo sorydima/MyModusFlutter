@@ -229,8 +229,8 @@ class AIHandler {
         jsonEncode({
           'success': true,
           'data': {
-            'content': content,
-            'category': category,
+          'content': content,
+          'category': category,
             'hashtags': hashtags,
             'generated_at': DateTime.now().toIso8601String(),
           }
