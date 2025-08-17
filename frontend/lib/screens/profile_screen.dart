@@ -4,6 +4,10 @@ import '../providers/auth_provider.dart';
 import 'wallet_screen.dart';
 import 'nft_marketplace_screen.dart';
 import 'ai_recommendations_screen.dart';
+import 'ai_dashboard_screen.dart';
+import 'ai_stylist_screen.dart';
+import 'ai_post_generator_screen.dart';
+import 'ai_trend_analysis_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -311,6 +315,70 @@ class ProfileScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const AIRecommendationsScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildAICard(
+            context,
+            'AI Dashboard',
+            'Аналитика и метрики',
+            Icons.analytics,
+            Colors.indigo,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AIDashboardScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildAICard(
+            context,
+            'AI Стилист',
+            'Персональные образы',
+            Icons.style,
+            Colors.pink,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AIStylistScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildAICard(
+            context,
+            'AI Генератор постов',
+            'Создание контента',
+            Icons.create,
+            Colors.teal,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AIPostGeneratorScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildAICard(
+            context,
+            'AI Анализ трендов',
+            'Анализ моды',
+            Icons.trending_up,
+            Colors.deepPurple,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AITrendAnalysisScreen(),
                 ),
               );
             },

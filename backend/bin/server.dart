@@ -1,199 +1,166 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_router/shelf_router.dart';
 import 'package:shelf_cors_headers/shelf_cors_headers.dart';
-import 'package:dotenv/dotenv.dart' as dotenv;
 import 'package:logger/logger.dart';
-import 'package:redis/redis.dart';
+import 'package:dotenv/dotenv.dart';
 
 import '../lib/database.dart';
-import '../lib/services/scraping_service.dart';
-import '../lib/services/web3_service.dart';
-import '../lib/services/ai_service.dart';
 import '../lib/handlers/auth_handler.dart';
-import '../lib/handlers/product_handler.dart';
-import '../lib/handlers/scraping_handler.dart';
-import '../lib/handlers/web3_handler.dart';
+import '../lib/handlers/ai_handler.dart';
+import '../lib/handlers/ai_analytics_handler.dart';
+import '../lib/services/ai_service.dart';
+import '../lib/services/ai_analytics_service.dart';
+import '../lib/services/jwt_service.dart';
 
 void main(List<String> args) async {
-  // Load environment variables
-  dotenv.load();
-  
-  // Initialize logger
+  // Инициализация логгера
   final logger = Logger();
-  logger.i('Starting MyModus Backend Server...');
   
   try {
-    // Initialize database
-    final db = DatabaseService();
-    await db.runMigrations();
-    logger.i('Database initialized successfully');
+    logger.i('🚀 Starting MyModus Backend Server...');
     
-    // Initialize Redis
-    final redis = await RedisConnection.connect(
-      dotenv.env['REDIS_URL'] ?? 'redis://localhost:6379',
-    );
-    logger.i('Redis connected successfully');
+    // Загрузка переменных окружения
+    final env = DotEnv()..load();
+    final port = int.parse(env['PORT'] ?? '8080');
     
-    // Initialize services
-    final scrapingService = ScrapingService(db, redis);
-    final web3Service = Web3Service(
-      dotenv.env['ETHEREUM_RPC_URL'] ?? 'http://localhost:8545',
-    );
-    final aiService = AIService(
-      apiKey: dotenv.env['OPENAI_API_KEY'] ?? '',
-    );
+    // Инициализация базы данных
+    logger.i('📊 Initializing database...');
+    await DatabaseService.runMigrations();
+    await DatabaseService.seedInitialData();
+    logger.i('✅ Database initialized successfully');
     
-    // Initialize Web3 contracts if addresses are provided
-    final escrowAddress = dotenv.env['ESCROW_CONTRACT_ADDRESS'];
-    final loyaltyTokenAddress = dotenv.env['LOYALTY_TOKEN_ADDRESS'];
-    final nftContractAddress = dotenv.env['NFT_CONTRACT_ADDRESS'];
+    // Инициализация сервисов
+    logger.i('🤖 Initializing AI services...');
+    final aiService = AIService();
+    final aiAnalyticsService = AIAnalyticsService();
+    final jwtService = JWTService();
     
-    if (escrowAddress != null && loyaltyTokenAddress != null && nftContractAddress != null) {
-      await web3Service.initializeContracts(
-        escrowAddress: escrowAddress,
-        loyaltyTokenAddress: loyaltyTokenAddress,
-        nftContractAddress: nftContractAddress,
-      );
-      logger.i('Web3 contracts initialized successfully');
-    } else {
-      logger.w('Web3 contract addresses not provided, Web3 features will be disabled');
-    }
+    // Инициализация handlers
+    logger.i('🔧 Setting up API handlers...');
+    final authHandler = AuthHandler(jwtService);
+    final aiHandler = AIHandler(aiService);
+    final aiAnalyticsHandler = AIAnalyticsHandler(aiAnalyticsService);
     
-    // Initialize handlers
-    final authHandler = AuthHandler(db);
-    final productHandler = ProductHandler(db, aiService);
-    final scrapingHandler = ScrapingHandler(scrapingService);
-    final web3Handler = Web3Handler(web3Service);
+    // Создание основного роутера
+    final app = Router();
     
-    // Create router
-    final router = Router();
+    // API маршруты
+    app.mount('/api/auth', authHandler.router);
+    app.mount('/api/ai', aiHandler.router);
+    app.mount('/api/ai-analytics', aiAnalyticsHandler.router);
     
-    // Health check
-    router.get('/health', (Request request) {
+    // Health check endpoint
+    app.get('/health', (Request request) {
       return Response.ok(
-        jsonEncode({
-          'status': 'healthy',
-          'timestamp': DateTime.now().toIso8601String(),
-          'version': '1.0.0',
-        }),
+        '{"status": "healthy", "service": "MyModus Backend", "timestamp": "${DateTime.now().toIso8601String()}"}',
         headers: {'content-type': 'application/json'},
       );
     });
     
-    // API routes
-    router.mount('/api/auth', authHandler.router);
-    router.mount('/api/products', productHandler.router);
-    router.mount('/api/scraping', scrapingHandler.router);
-    router.mount('/api/web3', web3Handler.router);
-    
-    // Admin routes
-    router.get('/admin/stats', (Request request) async {
-      try {
-        final scrapingStats = await scrapingService.getScrapingStats();
-        final dbStats = await _getDatabaseStats(db);
-        
-        return Response.ok(
-          jsonEncode({
-            'scraping': scrapingStats,
-            'database': dbStats,
-            'timestamp': DateTime.now().toIso8601String(),
-          }),
-          headers: {'content-type': 'application/json'},
-        );
-      } catch (e) {
-        logger.e('Error getting admin stats: $e');
-        return Response.internalServerError(
-          body: jsonEncode({'error': 'Failed to get statistics'}),
-          headers: {'content-type': 'application/json'},
-        );
-      }
+    // API info endpoint
+    app.get('/api', (Request request) {
+      return Response.ok(
+        '{"service": "MyModus Backend API", "version": "1.0.0", "endpoints": {'
+        '"auth": "/api/auth", '
+        '"ai": "/api/ai", '
+        '"ai-analytics": "/api/ai-analytics"'
+        '}, "timestamp": "${DateTime.now().toIso8601String()}"}',
+        headers: {'content-type': 'application/json'},
+      );
     });
     
-    // Create pipeline with CORS and logging
-    final pipeline = const Pipeline()
+    // API documentation endpoint
+    app.get('/api/docs', (Request request) {
+      return Response.ok(
+        '{"title": "MyModus Backend API Documentation", '
+        '"version": "1.0.0", '
+        '"description": "AI-powered fashion social commerce platform API", '
+        '"endpoints": {'
+        '"Authentication": {'
+        '"POST /api/auth/login": "User login", '
+        '"POST /api/auth/register": "User registration", '
+        '"POST /api/auth/refresh": "Refresh JWT token"'
+        '}, '
+        '"AI Services": {'
+        '"GET /api/ai/recommendations/{userId}": "Get AI recommendations for user", '
+        '"POST /api/ai/generate-description": "Generate product description with AI", '
+        '"GET /api/ai/preferences/{userId}": "Analyze user preferences", '
+        '"POST /api/ai/generate-hashtags": "Generate hashtags for posts", '
+        '"POST /api/ai/moderate-content": "AI content moderation", '
+        '"POST /api/ai/personalized-offers": "Generate personalized offers", '
+        '"GET /api/ai/trends": "Get AI fashion trends"'
+        '}, '
+        '"AI Analytics": {'
+        '"GET /api/ai-analytics/trends": "Get fashion trends analysis", '
+        '"GET /api/ai-analytics/trends/{category}": "Get trends by category", '
+        '"GET /api/ai-analytics/behavior/{userId}": "Analyze user behavior", '
+        '"GET /api/ai-analytics/effectiveness": "Analyze recommendation effectiveness", '
+        '"POST /api/ai-analytics/content": "Analyze content sentiment", '
+        '"GET /api/ai-analytics/demand": "Get demand predictions", '
+        '"GET /api/ai-analytics/competitors": "Analyze competitors", '
+        '"GET /api/ai-analytics/stats": "Get AI performance statistics"'
+        '}'
+        '}, '
+        '"timestamp": "${DateTime.now().toIso8601String()}"}',
+        headers: {'content-type': 'application/json'},
+      );
+    });
+    
+    // 404 handler для несуществующих маршрутов
+    app.all('/<ignored|.*>', (Request request) {
+      return Response.notFound(
+        '{"error": "Endpoint not found", "path": "${request.url.path}", "available_endpoints": ["/api", "/api/docs", "/health"]}',
+        headers: {'content-type': 'application/json'},
+      );
+    });
+    
+    // Настройка CORS
+    final handler = const Pipeline()
         .addMiddleware(corsHeaders())
-        .addMiddleware(_loggingMiddleware(logger))
-        .addHandler(router);
+        .addMiddleware(logRequests())
+        .addHandler(app);
     
-    // Start server
-    final port = int.parse(dotenv.env['PORT'] ?? '8080');
-    final server = await io.serve(
-      pipeline,
-      InternetAddress.anyIPv4,
-      port,
-    );
+    // Запуск сервера
+    logger.i('🌐 Starting server on port $port...');
+    final server = await io.serve(handler, InternetAddress.anyIPv4, port);
     
-    logger.i('Server running on port ${server.port}');
+    logger.i('🎉 MyModus Backend Server is running!');
+    logger.i('📍 Server URL: http://localhost:$port');
+    logger.i('📚 API Documentation: http://localhost:$port/api/docs');
+    logger.i('💚 Health Check: http://localhost:$port/health');
+    logger.i('🔐 Auth Endpoints: http://localhost:$port/api/auth');
+    logger.i('🤖 AI Endpoints: http://localhost:$port/api/ai');
+    logger.i('📊 AI Analytics: http://localhost:$port/api/ai-analytics');
     
     // Graceful shutdown
     ProcessSignal.sigint.watch().listen((_) async {
-      logger.i('Shutting down server...');
-      
-      scrapingService.dispose();
-      web3Service.dispose();
-      aiService.dispose();
-      await redis.close();
-      await db.closeConnection();
-      
+      logger.i('🛑 Shutting down server...');
       await server.close();
+      await DatabaseService.close();
+      logger.i('✅ Server shutdown complete');
+      exit(0);
+    });
+    
+    ProcessSignal.sigterm.watch().listen((_) async {
+      logger.i('🛑 Shutting down server...');
+      await server.close();
+      await DatabaseService.close();
+      logger.i('✅ Server shutdown complete');
       exit(0);
     });
     
   } catch (e, stackTrace) {
-    logger.e('Failed to start server: $e');
+    logger.e('❌ Failed to start server: $e');
     logger.e('Stack trace: $stackTrace');
     exit(1);
   }
 }
 
-/// Logging middleware
-Middleware _loggingMiddleware(Logger logger) {
-  return (Handler handler) {
-    return (Request request) async {
-      final startTime = DateTime.now();
-      
-      try {
-        final response = await handler(request);
-        
-        final duration = DateTime.now().difference(startTime);
-        logger.i('${request.method} ${request.url} - ${response.statusCode} - ${duration.inMilliseconds}ms');
-        
-        return response;
-      } catch (e, stackTrace) {
-        final duration = DateTime.now().difference(startTime);
-        logger.e('${request.method} ${request.url} - ERROR - ${duration.inMilliseconds}ms');
-        logger.e('Error: $e');
-        logger.e('Stack trace: $stackTrace');
-        
-        return Response.internalServerError(
-          body: jsonEncode({'error': 'Internal server error'}),
-          headers: {'content-type': 'application/json'},
-        );
-      }
-    };
-  };
-}
-
-/// Get database statistics
-Future<Map<String, dynamic>> _getDatabaseStats(DatabaseService db) async {
-  try {
-    final conn = await db.getConnection();
-    
-    final userCount = await conn.query('SELECT COUNT(*) FROM users');
-    final productCount = await conn.query('SELECT COUNT(*) FROM products');
-    final orderCount = await conn.query('SELECT COUNT(*) FROM orders');
-    
-    await conn.close();
-    
-    return {
-      'users': userCount.first.first,
-      'products': productCount.first.first,
-      'orders': orderCount.first.first,
-    };
-  } catch (e) {
-    return {'error': e.toString()};
-  }
+// Middleware для логирования запросов
+Response logRequests(Response response) {
+  final logger = Logger();
+  logger.i('${response.statusCode} ${response.requestedUri?.path ?? 'unknown'}');
+  return response;
 }
