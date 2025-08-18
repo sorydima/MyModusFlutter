@@ -11,6 +11,12 @@ import 'screens/profile_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/admin_screen.dart';
+import 'screens/feed_screen.dart';
+import 'screens/create_post_screen.dart';
+import 'screens/user_profile_screen.dart';
+import 'screens/chat_screen.dart';
+import 'screens/chats_list_screen.dart';
+import 'screens/main_app_screen.dart';
 
 GoRouter buildRouter() {
   return GoRouter(
@@ -30,7 +36,13 @@ GoRouter buildRouter() {
         builder: (ctx, state) => const RegisterScreen(),
       ),
       
-      // Main app routes
+      // Main app with navigation
+      GoRoute(
+        path: '/app',
+        builder: (ctx, state) => const MainAppScreen(),
+      ),
+      
+      // Individual screens (for direct navigation)
       GoRoute(
         path: '/home',
         builder: (ctx, state) => const ProductFeedScreen(),
@@ -56,6 +68,46 @@ GoRouter buildRouter() {
       GoRoute(
         path: '/profile',
         builder: (ctx, state) => const ProfileScreen(),
+      ),
+      
+      // Social network routes
+      GoRoute(
+        path: '/feed',
+        builder: (ctx, state) => const FeedScreen(),
+      ),
+      GoRoute(
+        path: '/create-post',
+        builder: (ctx, state) => const CreatePostScreen(),
+      ),
+      GoRoute(
+        path: '/user-profile/:userId',
+        builder: (ctx, state) {
+          final userId = state.pathParameters['userId']!;
+          final userName = state.queryParameters['userName'] ?? 'Пользователь';
+          return UserProfileScreen(
+            userId: userId,
+            userName: userName,
+          );
+        },
+      ),
+      
+      // Chat routes
+      GoRoute(
+        path: '/chats',
+        builder: (ctx, state) => const ChatsListScreen(),
+      ),
+      GoRoute(
+        path: '/chat/:chatId',
+        builder: (ctx, state) {
+          final chatId = state.pathParameters['chatId']!;
+          final userName = state.queryParameters['userName'] ?? 'Пользователь';
+          final userAvatar = state.queryParameters['userAvatar'] ?? 'https://via.placeholder.com/50x50/FF6B6B/FFFFFF?text=U';
+          return ChatScreen(
+            chatId: chatId,
+            userName: userName,
+            userAvatar: userAvatar,
+          );
+        },
       ),
       
       // Admin routes

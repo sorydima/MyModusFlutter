@@ -1,510 +1,583 @@
 import 'dart:convert';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
-import 'package:logger/logger.dart';
 import '../services/ai_service.dart';
-import '../models.dart';
+import '../database.dart';
 
 class AIHandler {
   final AIService _aiService;
-  final Logger _logger = Logger();
+  final DatabaseService _database;
 
-  AIHandler(this._aiService);
+  AIHandler(this._aiService, this._database);
 
   Router get router {
     final router = Router();
 
-    // AI рекомендации для пользователя
-    router.get('/recommendations/<userId>', _getUserRecommendations);
+    // Рекомендации
+    router.get('/recommendations', _getRecommendations);
+    router.get('/recommendations/products', _getProductRecommendations);
+    router.get('/recommendations/social', _getSocialRecommendations);
     
-    // Генерация описания товара
-    router.post('/generate-description', _generateProductDescription);
+    // Генерация контента
+    router.post('/generate/description', _generateProductDescription);
+    router.post('/generate/hashtags', _generateHashtags);
+    router.post('/generate/post', _generatePost);
     
-    // AI анализ пользовательских предпочтений
-    router.get('/preferences/<userId>', _analyzeUserPreferences);
+    // Анализ и модерация
+    router.post('/moderate/content', _moderateContent);
+    router.post('/analyze/sentiment', _analyzeSentiment);
+    router.post('/analyze/trends', _analyzeTrends);
     
-    // Генерация хештегов для постов
-    router.post('/generate-hashtags', _generateHashtags);
-    
-    // AI модерация контента
-    router.post('/moderate-content', _moderateContent);
-    
-    // Генерация персонализированных предложений
-    router.post('/personalized-offers', _generatePersonalizedOffers);
-    
-    // AI анализ трендов
-    router.get('/trends', _analyzeTrends);
+    // Статистика AI
+    router.get('/stats', _getAIStats);
 
     return router;
   }
 
-  /// Получение AI рекомендаций для пользователя
-  Future<Response> _getUserRecommendations(Request request, String userId) async {
+  Future<Response> _getRecommendations(Request request) async {
     try {
-      _logger.i('Getting AI recommendations for user: $userId');
-      
-      // В реальном приложении здесь будет получение данных из базы
-      // Пока используем тестовые данные
-      final userHistory = _getMockUserHistory();
-      final availableProducts = _getMockAvailableProducts();
-      
-      final recommendations = await _aiService.generateRecommendations(
+      final userId = request.url.queryParameters['userId'];
+      if (userId == null) {
+        return Response.badRequest(
+          body: jsonEncode({
+            'success': false,
+            'error': 'User ID is required',
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      }
+
+      final limit = int.tryParse(request.url.queryParameters['limit'] ?? '10') ?? 10;
+
+      final result = await _aiService.getAIRecommendations(
         userId: userId,
-        userHistory: userHistory,
-        availableProducts: availableProducts,
-        limit: 10,
+        limit: limit,
       );
-      
-      return Response.ok(
-        jsonEncode({
-          'success': true,
-          'data': {
-            'recommendations': recommendations.map((r) => {
-              return {
-                'product': {
-                  'id': r.product.id,
-                  'title': r.product.title,
-                  'price': r.product.price,
-                  'image_url': r.product.imageUrl,
-                  'brand': r.product.brand,
-                  'rating': r.product.rating,
-                },
-                'score': r.score,
-                'reason': r.reason,
-              };
-            }).toList(),
-            'total': recommendations.length,
-            'generated_at': DateTime.now().toIso8601String(),
-          }
-        }),
-        headers: {'content-type': 'application/json'},
-      );
+
+      if (result != null) {
+        return Response.ok(
+          jsonEncode({
+            'success': true,
+            'recommendations': result,
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      } else {
+        return Response.internalServerError(
+          body: jsonEncode({
+            'success': false,
+            'error': 'Failed to get recommendations',
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      }
     } catch (e) {
-      _logger.e('Error getting AI recommendations: $e');
       return Response.internalServerError(
         body: jsonEncode({
           'success': false,
-          'error': 'Failed to get AI recommendations: $e',
+          'error': e.toString(),
         }),
         headers: {'content-type': 'application/json'},
       );
     }
   }
 
-  /// Генерация описания товара с помощью AI
+  Future<Response> _getProductRecommendations(Request request) async {
+    try {
+      final userId = request.url.queryParameters['userId'];
+      if (userId == null) {
+        return Response.badRequest(
+          body: jsonEncode({
+            'success': false,
+            'error': 'User ID is required',
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      }
+
+      final categoryId = request.url.queryParameters['categoryId'];
+      final limit = int.tryParse(request.url.queryParameters['limit'] ?? '10') ?? 10;
+
+      // Получаем предпочтения пользователя
+      final userPreferences = await _database.query(
+        '''
+        SELECT p.category_id, COUNT(*) as view_count, AVG(p.rating) as avg_rating
+        FROM products p
+        LEFT JOIN product_views pv ON p.id = pv.product_id
+        WHERE pv.user_id = @userId
+        GROUP BY p.category_id
+        ORDER BY view_count DESC, avg_rating DESC
+        LIMIT 5
+        ''',
+        substitutionValues: {'userId': userId},
+      );
+
+      // Получаем рекомендуемые продукты
+      final recommendedProducts = await _database.query(
+        '''
+        SELECT p.*, c.name as category_name
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE p.is_active = true
+        ${categoryId != null ? 'AND p.category_id = @categoryId' : ''}
+        ORDER BY p.rating DESC, p.review_count DESC
+        LIMIT @limit
+        ''',
+        substitutionValues: {
+          'categoryId': categoryId,
+          'limit': limit,
+        },
+      );
+
+      return Response.ok(
+        jsonEncode({
+          'success': true,
+          'userPreferences': userPreferences,
+          'recommendedProducts': recommendedProducts,
+        }),
+        headers: {'content-type': 'application/json'},
+      );
+    } catch (e) {
+      return Response.internalServerError(
+        body: jsonEncode({
+          'success': false,
+          'error': e.toString(),
+        }),
+        headers: {'content-type': 'application/json'},
+      );
+    }
+  }
+
+  Future<Response> _getSocialRecommendations(Request request) async {
+    try {
+      final userId = request.url.queryParameters['userId'];
+      if (userId == null) {
+        return Response.badRequest(
+          body: jsonEncode({
+            'success': false,
+            'error': 'User ID is required',
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      }
+
+      final limit = int.tryParse(request.url.queryParameters['limit'] ?? '10') ?? 10;
+
+      // Получаем посты от пользователей, на которых подписан текущий пользователь
+      final followedPosts = await _database.query(
+        '''
+        SELECT p.*, u.name as author_name, u.avatar_url as author_avatar
+        FROM posts p
+        LEFT JOIN users u ON p.user_id = u.id
+        LEFT JOIN follows f ON p.user_id = f.following_id
+        WHERE f.follower_id = @userId AND p.is_active = true
+        ORDER BY p.created_at DESC
+        LIMIT @limit
+        ''',
+        substitutionValues: {
+          'userId': userId,
+          'limit': limit,
+        },
+      );
+
+      // Получаем популярные посты
+      final popularPosts = await _database.query(
+        '''
+        SELECT p.*, u.name as author_name, u.avatar_url as author_avatar
+        FROM posts p
+        LEFT JOIN users u ON p.user_id = u.id
+        WHERE p.is_active = true
+        ORDER BY p.like_count DESC, p.comment_count DESC, p.created_at DESC
+        LIMIT @limit
+        ''',
+        substitutionValues: {'limit': limit},
+      );
+
+      return Response.ok(
+        jsonEncode({
+          'success': true,
+          'followedPosts': followedPosts,
+          'popularPosts': popularPosts,
+        }),
+        headers: {'content-type': 'application/json'},
+      );
+    } catch (e) {
+      return Response.internalServerError(
+        body: jsonEncode({
+          'success': false,
+          'error': e.toString(),
+        }),
+        headers: {'content-type': 'application/json'},
+      );
+    }
+  }
+
   Future<Response> _generateProductDescription(Request request) async {
     try {
       final body = await request.readAsString();
       final data = jsonDecode(body);
-      
-      final productName = data['product_name'] as String;
-      final category = data['category'] as String;
-      final specifications = Map<String, dynamic>.from(data['specifications'] ?? {});
-      final style = data['style'] as String?;
-      
-      _logger.i('Generating AI description for product: $productName');
-      
-      final description = await _aiService.generateProductDescription(
+
+      final productName = data['productName'];
+      final category = data['category'];
+      final brand = data['brand'];
+      final specifications = data['specifications'];
+
+      if (productName == null) {
+        return Response.badRequest(
+          body: jsonEncode({
+            'success': false,
+            'error': 'Product name is required',
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      }
+
+      final result = await _aiService.generateProductDescription(
         productName: productName,
         category: category,
+        brand: brand,
         specifications: specifications,
-        style: style,
       );
-      
-      return Response.ok(
-        jsonEncode({
-          'success': true,
-          'data': {
-            'product_name': productName,
-            'category': category,
-            'generated_description': description,
-            'generated_at': DateTime.now().toIso8601String(),
-          }
-        }),
-        headers: {'content-type': 'application/json'},
-      );
-    } catch (e) {
-      _logger.e('Error generating product description: $e');
-      return Response.internalServerError(
-        body: jsonEncode({
-          'success': false,
-          'error': 'Failed to generate product description: $e',
-        }),
-        headers: {'content-type': 'application/json'},
-      );
-    }
-  }
 
-  /// Анализ пользовательских предпочтений
-  Future<Response> _analyzeUserPreferences(Request request, String userId) async {
-    try {
-      _logger.i('Analyzing preferences for user: $userId');
-      
-      // В реальном приложении здесь будет получение данных из базы
-      final userHistory = _getMockUserHistory();
-      
-      final preferences = await _aiService.generateRecommendations(
-        userId: userId,
-        userHistory: userHistory,
-        availableProducts: [],
-        limit: 0,
-      );
-      
-      // Анализируем предпочтения на основе истории
-      final categoryPreferences = <String, int>{};
-      final brandPreferences = <String, int>{};
-      final priceRange = <int>[];
-      
-      for (final product in userHistory) {
-        if (product.categoryId != null) {
-          categoryPreferences[product.categoryId!] = 
-              (categoryPreferences[product.categoryId!] ?? 0) + 1;
-        }
-        
-        if (product.brand != null) {
-          brandPreferences[product.brand!] = 
-              (brandPreferences[product.brand!] ?? 0) + 1;
-        }
-        
-        priceRange.add(product.price);
+      if (result != null) {
+        return Response.ok(
+          jsonEncode({
+            'success': true,
+            'description': result,
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      } else {
+        return Response.internalServerError(
+          body: jsonEncode({
+            'success': false,
+            'error': 'Failed to generate description',
+          }),
+          headers: {'content-type': 'application/json'},
+        );
       }
-      
-      final avgPrice = priceRange.isNotEmpty 
-          ? priceRange.reduce((a, b) => a + b) / priceRange.length 
-          : 0;
-      
-      final topCategories = _getTopItems(categoryPreferences, 5);
-      final topBrands = _getTopItems(brandPreferences, 5);
-      
-      return Response.ok(
-        jsonEncode({
-          'success': true,
-          'data': {
-            'user_id': userId,
-            'preferences': {
-              'top_categories': topCategories,
-              'top_brands': topBrands,
-              'average_price': avgPrice.round(),
-              'price_range': {
-                'min': priceRange.isNotEmpty ? priceRange.reduce((a, b) => a < b ? a : b) : 0,
-                'max': priceRange.isNotEmpty ? priceRange.reduce((a, b) => a > b ? a : b) : 0,
-                'average': avgPrice.round(),
-              },
-              'total_purchases': userHistory.length,
-            },
-            'analyzed_at': DateTime.now().toIso8601String(),
-          }
-        }),
-        headers: {'content-type': 'application/json'},
-      );
     } catch (e) {
-      _logger.e('Error analyzing user preferences: $e');
       return Response.internalServerError(
         body: jsonEncode({
           'success': false,
-          'error': 'Failed to analyze user preferences: $e',
+          'error': e.toString(),
         }),
         headers: {'content-type': 'application/json'},
       );
     }
   }
 
-  /// Генерация хештегов для постов
   Future<Response> _generateHashtags(Request request) async {
     try {
       final body = await request.readAsString();
       final data = jsonDecode(body);
-      
-      final content = data['content'] as String;
-      final category = data['category'] as String;
-      final limit = data['limit'] as int? ?? 5;
-      
-      _logger.i('Generating hashtags for content in category: $category');
-      
-      // В реальном приложении здесь будет вызов AI сервиса
-      // Пока используем простую логику
-      final hashtags = _generateMockHashtags(content, category, limit);
-      
-      return Response.ok(
-        jsonEncode({
-          'success': true,
-          'data': {
-          'content': content,
-          'category': category,
-            'hashtags': hashtags,
-            'generated_at': DateTime.now().toIso8601String(),
-          }
-        }),
-        headers: {'content-type': 'application/json'},
+
+      final content = data['content'];
+      final category = data['category'];
+      final count = int.tryParse(data['count']?.toString() ?? '10') ?? 10;
+
+      if (content == null) {
+        return Response.badRequest(
+          body: jsonEncode({
+            'success': false,
+            'error': 'Content is required',
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      }
+
+      final result = await _aiService.generateHashtags(
+        content: content,
+        category: category,
+        count: count,
       );
+
+      if (result != null) {
+        return Response.ok(
+          jsonEncode({
+            'success': true,
+            'hashtags': result,
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      } else {
+        return Response.internalServerError(
+          body: jsonEncode({
+            'success': false,
+            'error': 'Failed to generate hashtags',
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      }
     } catch (e) {
-      _logger.e('Error generating hashtags: $e');
       return Response.internalServerError(
         body: jsonEncode({
           'success': false,
-          'error': 'Failed to generate hashtags: $e',
+          'error': e.toString(),
         }),
         headers: {'content-type': 'application/json'},
       );
     }
   }
 
-  /// AI модерация контента
+  Future<Response> _generatePost(Request request) async {
+    try {
+      final body = await request.readAsString();
+      final data = jsonDecode(body);
+
+      final topic = data['topic'];
+      final style = data['style'];
+      final length = data['length'];
+      final hashtags = data['hashtags'];
+
+      if (topic == null) {
+        return Response.badRequest(
+          body: jsonEncode({
+            'success': false,
+            'error': 'Topic is required',
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      }
+
+      final result = await _aiService.generatePost(
+        topic: topic,
+        style: style,
+        length: length,
+        hashtags: hashtags,
+      );
+
+      if (result != null) {
+        return Response.ok(
+          jsonEncode({
+            'success': true,
+            'post': result,
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      } else {
+        return Response.internalServerError(
+          body: jsonEncode({
+            'success': false,
+            'error': 'Failed to generate post',
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      }
+    } catch (e) {
+      return Response.internalServerError(
+        body: jsonEncode({
+          'success': false,
+          'error': e.toString(),
+        }),
+        headers: {'content-type': 'application/json'},
+      );
+    }
+  }
+
   Future<Response> _moderateContent(Request request) async {
     try {
       final body = await request.readAsString();
       final data = jsonDecode(body);
-      
-      final content = data['content'] as String;
-      final contentType = data['content_type'] as String; // 'post', 'comment', 'product'
-      
-      _logger.i('Moderating content of type: $contentType');
-      
-      // В реальном приложении здесь будет вызов AI сервиса для модерации
-      // Пока используем простую логику
-      final moderationResult = _mockContentModeration(content, contentType);
-      
-      return Response.ok(
-        jsonEncode({
-          'success': true,
-          'data': {
-            'content': content,
-            'content_type': contentType,
-            'moderation': moderationResult,
-            'moderated_at': DateTime.now().toIso8601String(),
-          }
-        }),
-        headers: {'content-type': 'application/json'},
+
+      final content = data['content'];
+      final contentType = data['contentType']; // 'post', 'comment', 'product'
+
+      if (content == null) {
+        return Response.badRequest(
+          body: jsonEncode({
+            'success': false,
+            'error': 'Content is required',
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      }
+
+      final result = await _aiService.moderateContent(
+        content: content,
+        contentType: contentType,
       );
+
+      if (result != null) {
+        return Response.ok(
+          jsonEncode({
+            'success': true,
+            'moderation': result,
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      } else {
+        return Response.internalServerError(
+          body: jsonEncode({
+            'success': false,
+            'error': 'Failed to moderate content',
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      }
     } catch (e) {
-      _logger.e('Error moderating content: $e');
       return Response.internalServerError(
         body: jsonEncode({
           'success': false,
-          'error': 'Failed to moderate content: $e',
+          'error': e.toString(),
         }),
         headers: {'content-type': 'application/json'},
       );
     }
   }
 
-  /// Генерация персонализированных предложений
-  Future<Response> _generatePersonalizedOffers(Request request) async {
+  Future<Response> _analyzeSentiment(Request request) async {
     try {
       final body = await request.readAsString();
       final data = jsonDecode(body);
-      
-      final userId = data['user_id'] as String;
-      final offerType = data['offer_type'] as String; // 'discount', 'bundle', 'loyalty'
-      
-      _logger.i('Generating personalized offers for user: $userId, type: $offerType');
-      
-      // В реальном приложении здесь будет AI анализ и генерация предложений
-      final offers = _generateMockPersonalizedOffers(userId, offerType);
-      
-      return Response.ok(
-        jsonEncode({
-          'success': true,
-          'data': {
-            'user_id': userId,
-            'offer_type': offerType,
-            'offers': offers,
-            'generated_at': DateTime.now().toIso8601String(),
-          }
-        }),
-        headers: {'content-type': 'application/json'},
+
+      final content = data['content'];
+      final contentType = data['contentType'];
+
+      if (content == null) {
+        return Response.badRequest(
+          body: jsonEncode({
+            'success': false,
+            'error': 'Content is required',
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      }
+
+      final result = await _aiService.analyzeSentiment(
+        content: content,
+        contentType: contentType,
       );
+
+      if (result != null) {
+        return Response.ok(
+          jsonEncode({
+            'success': true,
+            'sentiment': result,
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      } else {
+        return Response.internalServerError(
+          body: jsonEncode({
+            'success': false,
+            'error': 'Failed to analyze sentiment',
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      }
     } catch (e) {
-      _logger.e('Error generating personalized offers: $e');
       return Response.internalServerError(
         body: jsonEncode({
           'success': false,
-          'error': 'Failed to generate personalized offers: $e',
+          'error': e.toString(),
         }),
         headers: {'content-type': 'application/json'},
       );
     }
   }
 
-  /// AI анализ трендов
   Future<Response> _analyzeTrends(Request request) async {
     try {
-      _logger.i('Analyzing fashion trends');
-      
-      // В реальном приложении здесь будет AI анализ трендов
-      final trends = _generateMockTrends();
-      
+      final body = await request.readAsString();
+      final data = jsonDecode(body);
+
+      final category = data['category'];
+      final timeRange = data['timeRange']; // 'day', 'week', 'month'
+      final limit = int.tryParse(data['limit']?.toString() ?? '10') ?? 10;
+
+      final result = await _aiService.analyzeTrends(
+        category: category,
+        timeRange: timeRange,
+        limit: limit,
+      );
+
+      if (result != null) {
+        return Response.ok(
+          jsonEncode({
+            'success': true,
+            'trends': result,
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      } else {
+        return Response.internalServerError(
+          body: jsonEncode({
+            'success': false,
+            'error': 'Failed to analyze trends',
+          }),
+          headers: {'content-type': 'application/json'},
+        );
+      }
+    } catch (e) {
+      return Response.internalServerError(
+        body: jsonEncode({
+          'success': false,
+          'error': e.toString(),
+        }),
+        headers: {'content-type': 'application/json'},
+      );
+    }
+  }
+
+  Future<Response> _getAIStats(Request request) async {
+    try {
+      // Получаем статистику использования AI
+      final totalRecommendations = await _database.query(
+        'SELECT COUNT(*) as total FROM ai_recommendations',
+      );
+
+      final totalGeneratedContent = await _database.query(
+        'SELECT COUNT(*) as total FROM ai_generated_content',
+      );
+
+      final totalModeratedContent = await _database.query(
+        'SELECT COUNT(*) as total FROM ai_moderation_logs',
+      );
+
+      final recentActivity = await _database.query(
+        '''
+        SELECT 
+          DATE(created_at) as date,
+          COUNT(*) as count,
+          'recommendations' as type
+        FROM ai_recommendations 
+        WHERE created_at >= NOW() - INTERVAL '7 days'
+        GROUP BY DATE(created_at)
+        UNION ALL
+        SELECT 
+          DATE(created_at) as date,
+          COUNT(*) as count,
+          'generated_content' as type
+        FROM ai_generated_content 
+        WHERE created_at >= NOW() - INTERVAL '7 days'
+        GROUP BY DATE(created_at)
+        ORDER BY date DESC, type
+        ''',
+      );
+
+      final stats = {
+        'totalRecommendations': totalRecommendations.first['total'] ?? 0,
+        'totalGeneratedContent': totalGeneratedContent.first['total'] ?? 0,
+        'totalModeratedContent': totalModeratedContent.first['total'] ?? 0,
+        'recentActivity': recentActivity,
+      };
+
       return Response.ok(
         jsonEncode({
           'success': true,
-          'data': {
-            'trends': trends,
-            'analyzed_at': DateTime.now().toIso8601String(),
-          }
+          'stats': stats,
         }),
         headers: {'content-type': 'application/json'},
       );
     } catch (e) {
-      _logger.e('Error analyzing trends: $e');
       return Response.internalServerError(
         body: jsonEncode({
           'success': false,
-          'error': 'Failed to analyze trends: $e',
+          'error': e.toString(),
         }),
         headers: {'content-type': 'application/json'},
       );
     }
-  }
-
-  // Вспомогательные методы для тестовых данных
-
-  List<Product> _getMockUserHistory() {
-    return [
-      Product(
-        id: '1',
-        title: 'Nike Air Max 270',
-        description: 'Стильные кроссовки',
-        price: 12990,
-        imageUrl: 'https://example.com/nike.jpg',
-        productUrl: 'https://example.com/nike',
-        brand: 'Nike',
-        categoryId: 'footwear',
-        rating: 4.8,
-      ),
-      Product(
-        id: '2',
-        title: 'Levi\'s 501 Jeans',
-        description: 'Классические джинсы',
-        price: 7990,
-        imageUrl: 'https://example.com/levis.jpg',
-        productUrl: 'https://example.com/levis',
-        brand: 'Levi\'s',
-        categoryId: 'clothing',
-        rating: 4.6,
-      ),
-    ];
-  }
-
-  List<Product> _getMockAvailableProducts() {
-    return [
-      Product(
-        id: '3',
-        title: 'Adidas Ultraboost 22',
-        description: 'Беговые кроссовки',
-        price: 18990,
-        imageUrl: 'https://example.com/adidas.jpg',
-        productUrl: 'https://example.com/adidas',
-        brand: 'Adidas',
-        categoryId: 'footwear',
-        rating: 4.9,
-      ),
-      Product(
-        id: '4',
-        title: 'Apple Watch Series 8',
-        description: 'Умные часы',
-        price: 45990,
-        imageUrl: 'https://example.com/apple.jpg',
-        productUrl: 'https://example.com/apple',
-        brand: 'Apple',
-        categoryId: 'accessories',
-        rating: 4.7,
-      ),
-    ];
-  }
-
-  List<String> _getTopItems(Map<String, int> items, int count) {
-    final sorted = items.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    
-    return sorted.take(count).map((e) => e.key).toList();
-  }
-
-  List<String> _generateMockHashtags(String content, String category, int limit) {
-    final baseHashtags = ['MyModusLook', 'FashionStyle', 'TrendyOutfit'];
-    final categoryHashtags = {
-      'footwear': ['ShoeGame', 'Kicks', 'SneakerHead'],
-      'clothing': ['OOTD', 'FashionForward', 'StyleInspo'],
-      'accessories': ['Accessorize', 'Jewelry', 'Bags'],
-    };
-    
-    final allHashtags = [...baseHashtags, ...(categoryHashtags[category] ?? [])];
-    return allHashtags.take(limit).toList();
-  }
-
-  Map<String, dynamic> _mockContentModeration(String content, String contentType) {
-    // Простая логика модерации
-    final hasSpam = content.toLowerCase().contains('buy now') || 
-                     content.toLowerCase().contains('click here');
-    final hasInappropriate = content.toLowerCase().contains('bad word');
-    
-    return {
-      'is_approved': !hasSpam && !hasInappropriate,
-      'flags': {
-        'spam': hasSpam,
-        'inappropriate': hasInappropriate,
-      },
-      'confidence': 0.95,
-      'recommendation': (!hasSpam && !hasInappropriate) ? 'approve' : 'review',
-    };
-  }
-
-  List<Map<String, dynamic>> _generateMockPersonalizedOffers(String userId, String offerType) {
-    switch (offerType) {
-      case 'discount':
-        return [
-          {
-            'type': 'discount',
-            'value': 15,
-            'description': 'Скидка 15% на обувь Nike',
-            'valid_until': DateTime.now().add(Duration(days: 7)).toIso8601String(),
-          },
-        ];
-      case 'bundle':
-        return [
-          {
-            'type': 'bundle',
-            'description': 'Комплект: джинсы + футболка со скидкой 20%',
-            'savings': 2500,
-            'valid_until': DateTime.now().add(Duration(days: 14)).toIso8601String(),
-          },
-        ];
-      case 'loyalty':
-        return [
-          {
-            'type': 'loyalty',
-            'description': 'Бонусные баллы за покупку',
-            'points': 500,
-            'valid_until': DateTime.now().add(Duration(days: 30)).toIso8601String(),
-          },
-        ];
-      default:
-        return [];
-    }
-  }
-
-  List<Map<String, dynamic>> _generateMockTrends() {
-    return [
-      {
-        'trend': 'Sustainable Fashion',
-        'confidence': 0.92,
-        'description': 'Растущий интерес к экологичной моде',
-        'products_count': 150,
-        'growth_rate': '+25%',
-      },
-      {
-        'trend': 'Athleisure',
-        'confidence': 0.88,
-        'description': 'Спортивная одежда для повседневной носки',
-        'products_count': 89,
-        'growth_rate': '+18%',
-      },
-      {
-        'trend': 'Vintage Revival',
-        'confidence': 0.85,
-        'description': 'Возвращение винтажных стилей',
-        'products_count': 67,
-        'growth_rate': '+12%',
-      },
-    ];
   }
 }

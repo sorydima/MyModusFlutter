@@ -17,6 +17,8 @@ import 'handlers/product_handler.dart';
 import 'handlers/social_handler.dart';
 import 'handlers/web3_handler.dart';
 import 'handlers/ai_handler.dart';
+import 'services/auth_service.dart';
+import 'services/jwt_service.dart';
 
 class MyModusServer {
   late final HttpServer _server;
@@ -25,6 +27,8 @@ class MyModusServer {
   late final ScrapingService _scrapingService;
   late final Web3Service _web3Service;
   late final AIService _aiService;
+  late final JWTService _jwtService;
+  late final AuthService _authService;
   
   // Handlers
   late final AuthHandler _authHandler;
@@ -55,16 +59,18 @@ class MyModusServer {
       _redis = await RedisConnection.connect('redis://localhost:6379');
       
       // Инициализируем сервисы
+      _jwtService = JWTService();
+      _authService = AuthService(_database, _jwtService);
       _scrapingService = ScrapingService(_database, _redis);
       _web3Service = Web3Service(_database);
       _aiService = AIService(_database, _redis);
       
       // Инициализируем обработчики
-      _authHandler = AuthHandler(_database, _aiService);
-      _productHandler = ProductHandler(_database, _scrapingService);
+      _authHandler = AuthHandler(_authService, _jwtService);
+      _productHandler = ProductHandler(_scrapingService, _database);
       _socialHandler = SocialHandler(_database);
-      _web3Handler = Web3Handler(_database, _web3Service);
-      _aiHandler = AIHandler(_database, _aiService);
+      _web3Handler = Web3Handler(_web3Service, _database);
+      _aiHandler = AIHandler(_aiService, _database);
       
       print('All services initialized successfully');
       
