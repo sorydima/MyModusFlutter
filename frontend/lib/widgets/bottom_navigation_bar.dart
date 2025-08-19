@@ -1,52 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-class BottomNavigationBarWidget extends StatefulWidget {
+class CustomBottomNavigationBar extends StatelessWidget {
   final int currentIndex;
-  
-  const BottomNavigationBarWidget({
+  final Function(int) onTap;
+
+  const CustomBottomNavigationBar({
     super.key,
     required this.currentIndex,
+    required this.onTap,
   });
 
-  @override
-  State<BottomNavigationBarWidget> createState() => _BottomNavigationBarWidgetState();
-}
-
-class _BottomNavigationBarWidgetState extends State<BottomNavigationBarWidget> {
   @override
   Widget build(BuildContext context) {
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
-      currentIndex: widget.currentIndex,
-      onTap: (index) {
-        switch (index) {
-          case 0:
-            context.go('/home');
-            break;
-          case 1:
-            context.go('/feed');
-            break;
-          case 2:
-            context.go('/search');
-            break;
-          case 3:
-            context.go('/chats');
-            break;
-          case 4:
-            context.go('/profile');
-            break;
-        }
-      },
+      currentIndex: currentIndex,
+      onTap: onTap,
       selectedItemColor: Theme.of(context).colorScheme.primary,
       unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
+      selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+      unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
       items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.home),
           label: 'Главная',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.explore),
+          icon: Icon(Icons.feed),
           label: 'Лента',
         ),
         BottomNavigationBarItem(
@@ -54,8 +35,8 @@ class _BottomNavigationBarWidgetState extends State<BottomNavigationBarWidget> {
           label: 'Поиск',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.chat_bubble),
-          label: 'Чаты',
+          icon: Icon(Icons.account_balance_wallet),
+          label: 'Web3',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.person),

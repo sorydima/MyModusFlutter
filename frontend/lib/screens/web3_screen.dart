@@ -1,0 +1,148 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
+import '../widgets/web3_wallet_card.dart';
+import '../widgets/nft_grid.dart';
+import '../widgets/loyalty_tokens_list.dart';
+import '../widgets/transaction_history.dart';
+
+class Web3Screen extends StatefulWidget {
+  const Web3Screen({super.key});
+
+  @override
+  State<Web3Screen> createState() => _Web3ScreenState();
+}
+
+class _Web3ScreenState extends State<Web3Screen> {
+  int _selectedTabIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AppProvider>(
+      builder: (context, appProvider, child) {
+        final web3Provider = appProvider.web3Provider;
+        
+        return Scaffold(
+          body: CustomScrollView(
+            slivers: [
+              // Заголовок
+              SliverAppBar(
+                floating: true,
+                title: const Text(
+                  'Web3',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                actions: [
+                  if (web3Provider.isConnected)
+                    IconButton(
+                      onPressed: () => _showDisconnectDialog(context),
+                      icon: const Icon(Icons.logout),
+                    ),
+                ],
+              ),
+              
+              // Карточка кошелька
+              SliverToBoxAdapter(
+                child: Web3WalletCard(),
+              ),
+              
+              // Вкладки Web3 функций
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _Web3TabsDelegate(
+                  child: Container(
+                    color: Theme.of(context).colorScheme.surface,
+                    child: TabBar(
+                      onTap: (index) {
+                        setState(() {
+                          _selectedTabIndex = index;
+                        });
+                      },
+                      tabs: const [
+                        Tab(text: 'NFT'),
+                        Tab(text: 'Токены'),
+                        Tab(text: 'Транзакции'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              
+              // Содержимое вкладок
+              _buildTabContent(),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTabContent() {
+    switch (_selectedTabIndex) {
+      case 0:
+        return const SliverToBoxAdapter(
+          child: NFTGrid(),
+        );
+      case 1:
+        return const SliverToBoxAdapter(
+          child: LoyaltyTokensList(),
+        );
+      case 2:
+        return const SliverToBoxAdapter(
+          child: TransactionHistory(),
+        );
+      default:
+        return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+  }
+
+  void _showDisconnectDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Отключить кошелек?'),
+        content: const Text('Вы уверены, что хотите отключить кошелек?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              final appProvider = context.read<AppProvider>();
+              appProvider.web3Provider.disconnectWallet();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            child: const Text('Отключить'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Web3TabsDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+
+  _Web3TabsDelegate({required this.child});
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return child;
+  }
+
+  @override
+  double get maxExtent => 48;
+
+  @override
+  double get minExtent => 48;
+
+  @override
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) {
+    return false;
+  }
+}

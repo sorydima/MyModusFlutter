@@ -1,124 +1,181 @@
 const { ethers } = require("hardhat");
 
 async function main() {
-  console.log("🚀 Starting deployment of MyModus smart contracts...");
+  console.log("🚀 Начинаем деплой смарт-контрактов MyModus...");
   
-  // Get deployer account
+  // Получаем аккаунт для деплоя
   const [deployer] = await ethers.getSigners();
-  console.log("📝 Deploying contracts with account:", deployer.address);
-  console.log("💰 Account balance:", (await deployer.getBalance()).toString());
+  console.log(`📝 Деплой с аккаунта: ${deployer.address}`);
+  console.log(`💰 Баланс аккаунта: ${ethers.formatEther(await deployer.provider.getBalance(deployer.address))} ETH`);
+  
+  // Деплой NFT контракта
+  console.log("\n🎨 Деплой NFT контракта...");
+  const MyModusNFT = await ethers.getContractFactory("MyModusNFT");
+  const nftContract = await MyModusNFT.deploy();
+  await nftContract.waitForDeployment();
+  
+  const nftAddress = await nftContract.getAddress();
+  console.log(`✅ NFT контракт развернут по адресу: ${nftAddress}`);
+  
+  // Деплой токена лояльности
+  console.log("\n🪙 Деплой токена лояльности...");
+  const MyModusLoyalty = await ethers.getContractFactory("MyModusLoyalty");
+  const loyaltyContract = await MyModusLoyalty.deploy(
+    "MyModus Loyalty Token", // Название
+    "MMLT",                   // Символ
+    18,                       // Десятичные знаки
+    ethers.parseEther("1000000"), // Максимальное предложение: 1M токенов
+    ethers.parseEther("0.001")   // Цена минтинга: 0.001 ETH за токен
+  );
+  await loyaltyContract.waitForDeployment();
+  
+  const loyaltyAddress = await loyaltyContract.getAddress();
+  console.log(`✅ Токен лояльности развернут по адресу: ${loyaltyAddress}`);
+  
+  // Получаем информацию о развернутых контрактах
+  console.log("\n📊 Информация о развернутых контрактах:");
+  
+  const nftName = await nftContract.name();
+  const nftSymbol = await nftContract.symbol();
+  console.log(`🎨 NFT: ${nftName} (${nftSymbol})`);
+  
+  const loyaltyName = await loyaltyContract.name();
+  const loyaltySymbol = await loyaltyContract.symbol();
+  const loyaltyDecimals = await loyaltyContract.decimals();
+  const loyaltyMaxSupply = await loyaltyContract.maxSupply();
+  const loyaltyMintPrice = await loyaltyContract.mintPrice();
+  
+  console.log(`🪙 Токен лояльности: ${loyaltyName} (${loyaltySymbol})`);
+  console.log(`   Десятичные знаки: ${loyaltyDecimals}`);
+  console.log(`   Максимальное предложение: ${ethers.formatEther(loyaltyMaxSupply)} ${loyaltySymbol}`);
+  console.log(`   Цена минтинга: ${ethers.formatEther(loyaltyMintPrice)} ETH`);
+  
+  // Проверяем права владельца
+  console.log("\n🔐 Проверка прав доступа:");
+  
+  const nftOwner = await nftContract.owner();
+  const loyaltyOwner = await loyaltyContract.owner();
+  
+  console.log(`NFT владелец: ${nftOwner}`);
+  console.log(`Токен владелец: ${loyaltyOwner}`);
+  console.log(`Деплойщик: ${deployer.address}`);
+  
+  if (nftOwner === deployer.address && loyaltyOwner === deployer.address) {
+    console.log("✅ Права владельца корректно установлены");
+  } else {
+    console.log("❌ Ошибка: права владельца установлены некорректно");
+  }
+  
+  // Проверяем минтеров и бёрнеров
+  const isNFTMinter = await nftContract.isMinter(deployer.address);
+  const isLoyaltyMinter = await loyaltyContract.isMinter(deployer.address);
+  const isLoyaltyBurner = await loyaltyContract.isBurner(deployer.address);
+  
+  console.log(`\n🔑 Права доступа:`);
+  console.log(`NFT минтер: ${isNFTMinter ? "✅" : "❌"}`);
+  console.log(`Токен минтер: ${isLoyaltyMinter ? "✅" : "❌"}`);
+  console.log(`Токен бёрнер: ${isLoyaltyBurner ? "✅" : "❌"}`);
+  
+  // Тестируем базовую функциональность
+  console.log("\n🧪 Тестирование базовой функциональности...");
   
   try {
-    // Deploy Escrow contract
-    console.log("\n📦 Deploying Escrow contract...");
-    const Escrow = await ethers.getContractFactory("Escrow");
-    const escrow = await Escrow.deploy();
-    await escrow.deployed();
-    console.log("✅ Escrow deployed to:", escrow.address);
+    // Тест минтинга NFT
+    console.log("Тестируем минтинг NFT...");
+    const testTokenURI = "ipfs://QmTestNFTMetadata";
+    const testName = "Test NFT";
+    const testDescription = "Test NFT description";
+    const testImageURI = "ipfs://QmTestImage";
+    const testCategory = "Test";
     
-    // Deploy LoyaltyToken contract
-    console.log("\n🎯 Deploying LoyaltyToken contract...");
-    const LoyaltyToken = await ethers.getContractFactory("LoyaltyToken");
-    const loyaltyToken = await LoyaltyToken.deploy();
-    await loyaltyToken.deployed();
-    console.log("✅ LoyaltyToken deployed to:", loyaltyToken.address);
-    
-    // Deploy MyModusNFT contract
-    console.log("\n🖼️ Deploying MyModusNFT contract...");
-    const MyModusNFT = await ethers.getContractFactory("MyModusNFT");
-    const myModusNFT = await MyModusNFT.deploy();
-    await myModusNFT.deployed();
-    console.log("✅ MyModusNFT deployed to:", myModusNFT.address);
-    
-    // Add deployer as minter for LoyaltyToken
-    console.log("\n🔑 Setting up minter permissions...");
-    await loyaltyToken.addMinter(deployer.address);
-    console.log("✅ Deployer added as minter for LoyaltyToken");
-    
-    // Add deployer as minter for MyModusNFT (owner is automatically minter)
-    console.log("✅ Deployer is owner of MyModusNFT");
-    
-    // Deploy some initial NFTs for testing
-    console.log("\n🎨 Minting initial test NFTs...");
-    
-    // Mint a test achievement NFT
-    await myModusNFT.mintAchievement(
+    const mintTx = await nftContract.mintNFT(
       deployer.address,
-      "Early Adopter",
-      "One of the first users of MyModus platform",
-      "ipfs://QmTestAchievement1",
-      "Achievement",
-      3, // Rarity
-      1  // Level
+      testTokenURI,
+      testName,
+      testDescription,
+      testImageURI,
+      testCategory
     );
-    console.log("✅ Minted 'Early Adopter' achievement NFT");
     
-    // Mint a test collectible NFT
-    await myModusNFT.mint(
-      deployer.address,
-      "Fashion Pioneer",
-      "Exclusive fashion collectible for platform pioneers",
-      "ipfs://QmTestCollectible1",
-      "Collectible",
-      4, // Rarity
-      1, // Level
-      true // Tradeable
-    );
-    console.log("✅ Minted 'Fashion Pioneer' collectible NFT");
+    await mintTx.wait();
+    console.log("✅ NFT успешно отминчен");
     
-    // Mint some initial loyalty tokens
-    console.log("\n💎 Minting initial loyalty tokens...");
-    await loyaltyToken.mintLoyaltyReward(deployer.address, ethers.utils.parseEther("1000"));
-    console.log("✅ Minted 1000 loyalty tokens for deployer");
+    // Проверяем метаданные
+    const metadata = await nftContract.getNFTMetadata(1);
+    console.log(`   Название: ${metadata.name}`);
+    console.log(`   Описание: ${metadata.description}`);
+    console.log(`   Категория: ${metadata.category}`);
     
-    // Print deployment summary
-    console.log("\n🎉 Deployment completed successfully!");
-    console.log("=" .repeat(60));
-    console.log("📋 Contract Addresses:");
-    console.log("Escrow:", escrow.address);
-    console.log("LoyaltyToken:", loyaltyToken.address);
-    console.log("MyModusNFT:", myModusNFT.address);
-    console.log("=" .repeat(60));
-    console.log("🔑 Deployer:", deployer.address);
-    console.log("💰 Deployer balance:", (await deployer.getBalance()).toString());
+    // Тест минтинга токенов лояльности
+    console.log("\nТестируем минтинг токенов лояльности...");
+    const testAmount = ethers.parseEther("100");
     
-    // Save deployment info to file
-    const deploymentInfo = {
-      network: network.name,
-      deployer: deployer.address,
-      contracts: {
-        escrow: escrow.address,
-        loyaltyToken: loyaltyToken.address,
-        myModusNFT: myModusNFT.address
-      },
-      timestamp: new Date().toISOString(),
-      blockNumber: await ethers.provider.getBlockNumber()
-    };
+    const mintLoyaltyTx = await loyaltyContract.mint(deployer.address, testAmount);
+    await mintLoyaltyTx.wait();
     
-    const fs = require('fs');
-    fs.writeFileSync(
-      `deployment-${network.name}.json`,
-      JSON.stringify(deploymentInfo, null, 2)
-    );
-    console.log("\n💾 Deployment info saved to deployment-" + network.name + ".json");
+    console.log("✅ Токены лояльности успешно отминчены");
     
-    // Instructions for next steps
-    console.log("\n📝 Next steps:");
-    console.log("1. Update your .env file with the contract addresses");
-    console.log("2. Verify contracts on Etherscan (if deploying to testnet/mainnet)");
-    console.log("3. Update frontend configuration with new addresses");
-    console.log("4. Test the contracts with your dApp");
+    // Проверяем баланс
+    const balance = await loyaltyContract.balanceOf(deployer.address);
+    console.log(`   Баланс: ${ethers.formatEther(balance)} ${loyaltySymbol}`);
+    
+    // Получаем статистику
+    const nftStats = await nftContract.getStats();
+    const loyaltyStats = await loyaltyContract.getStats();
+    
+    console.log("\n📈 Статистика контрактов:");
+    console.log(`NFT:`);
+    console.log(`   Всего токенов: ${nftStats.totalNFTs}`);
+    console.log(`   Создателей: ${nftStats.totalCreators}`);
+    console.log(`   На продаже: ${nftStats.nftsForSale}`);
+    
+    console.log(`Токен лояльности:`);
+    console.log(`   Всего пользователей: ${loyaltyStats.totalUsers}`);
+    console.log(`   Активных пользователей: ${loyaltyStats.activeUsers}`);
+    console.log(`   Минтеров: ${loyaltyStats.totalMinters}`);
+    console.log(`   Бёрнеров: ${loyaltyStats.totalBurners}`);
     
   } catch (error) {
-    console.error("❌ Deployment failed:", error);
-    process.exit(1);
+    console.log("❌ Ошибка при тестировании:", error.message);
   }
+  
+  // Сохраняем адреса контрактов
+  console.log("\n💾 Сохранение адресов контрактов...");
+  
+  const contractAddresses = {
+    network: network.name,
+    nftContract: nftAddress,
+    loyaltyContract: loyaltyAddress,
+    deployer: deployer.address,
+    deploymentTime: new Date().toISOString()
+  };
+  
+  // Выводим адреса для копирования
+  console.log("\n📋 Адреса контрактов для копирования:");
+  console.log(`NFT_CONTRACT_ADDRESS=${nftAddress}`);
+  console.log(`LOYALTY_CONTRACT_ADDRESS=${loyaltyAddress}`);
+  console.log(`DEPLOYER_ADDRESS=${deployer.address}`);
+  
+  // Сохраняем в файл
+  const fs = require('fs');
+  const path = require('path');
+  
+  const addressesPath = path.join(__dirname, '..', 'deployed-addresses.json');
+  fs.writeFileSync(addressesPath, JSON.stringify(contractAddresses, null, 2));
+  
+  console.log(`\n💾 Адреса сохранены в файл: ${addressesPath}`);
+  
+  console.log("\n🎉 Деплой завершен успешно!");
+  console.log("\n📝 Следующие шаги:");
+  console.log("1. Скопируйте адреса контрактов в .env файл");
+  console.log("2. Обновите ABI в frontend");
+  console.log("3. Протестируйте функциональность");
+  console.log("4. Настройте мониторинг контрактов");
 }
 
-// Handle errors
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error(error);
+    console.error("❌ Ошибка при деплое:", error);
     process.exit(1);
   });

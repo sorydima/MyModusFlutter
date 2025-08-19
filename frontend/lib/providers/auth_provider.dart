@@ -1,110 +1,176 @@
 
-import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
+import '../services/api_service.dart';
 
 class AuthProvider extends ChangeNotifier {
+  final ApiService _apiService = ApiService();
+  
+  // Состояние аутентификации
   bool _isAuthenticated = false;
-  String? _token;
-  String? _userId;
-  String? _userName;
-  String? _userEmail;
+  bool _isLoading = false;
+  Map<String, dynamic>? _user;
+  String? _error;
 
+  // Геттеры
   bool get isAuthenticated => _isAuthenticated;
-  String? get token => _token;
-  String? get userId => _userId;
-  String? get userName => _userName;
-  String? get userEmail => _userEmail;
+  bool get isLoading => _isLoading;
+  Map<String, dynamic>? get user => _user;
+  String? get error => _error;
 
-  AuthProvider() {
-    _loadAuthState();
-  }
-
-  Future<void> _loadAuthState() async {
-    final prefs = await SharedPreferences.getInstance();
-    _token = prefs.getString('auth_token');
-    _userId = prefs.getString('user_id');
-    _userName = prefs.getString('user_name');
-    _userEmail = prefs.getString('user_email');
-    _isAuthenticated = _token != null;
-    notifyListeners();
-  }
-
-  Future<void> login(String email, String password) async {
+  // Инициализация - проверяем существующий токен
+  Future<void> initialize() async {
     try {
-      // TODO: Implement actual API call
-      // For now, simulate successful login
-      await Future.delayed(const Duration(seconds: 1));
-      
-      _token = 'fake_jwt_token_${DateTime.now().millisecondsSinceEpoch}';
-      _userId = 'user_123';
-      _userName = 'Test User';
-      _userEmail = email;
+      _setLoading(true);
+      final profile = await _apiService.getProfile();
+      _user = profile;
       _isAuthenticated = true;
-
-      // Save to SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('auth_token', _token!);
-      await prefs.setString('user_id', _userId!);
-      await prefs.setString('user_name', _userName!);
-      await prefs.setString('user_email', _userEmail!);
-
-      notifyListeners();
+      _error = null;
     } catch (e) {
-      rethrow;
+      _isAuthenticated = false;
+      _user = null;
+      _error = null;
+    } finally {
+      _setLoading(false);
+      notifyListeners();
     }
   }
 
-  Future<void> register(String email, String password, String name) async {
+  // Регистрация
+  Future<bool> register({
+    required String email,
+    required String password,
+    required String name,
+    String? phone,
+  }) async {
     try {
-      // TODO: Implement actual API call
-      // For now, simulate successful registration
-      await Future.delayed(const Duration(seconds: 1));
+      _setLoading(true);
+      _error = null;
       
-      _token = 'fake_jwt_token_${DateTime.now().millisecondsSinceEpoch}';
-      _userId = 'user_${DateTime.now().millisecondsSinceEpoch}';
-      _userName = name;
-      _userEmail = email;
+      final user = await _apiService.register(
+        email: email,
+        password: password,
+        name: name,
+        phone: phone,
+      );
+      
+      _user = user;
       _isAuthenticated = true;
-
-      // Save to SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('auth_token', _token!);
-      await prefs.setString('user_id', _userId!);
-      await prefs.setString('user_name', _userName!);
-      await prefs.setString('user_email', _userEmail!);
-
       notifyListeners();
+      return true;
     } catch (e) {
-      rethrow;
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    } finally {
+      _setLoading(false);
     }
   }
 
+  // Вход в систему
+  Future<bool> login(String email, String password) async {
+    try {
+      _setLoading(true);
+      _error = null;
+      
+      final tokens = await _apiService.login(email, password);
+      
+      // Получаем профиль пользователя
+      final profile = await _apiService.getProfile();
+      
+      _user = profile;
+      _isAuthenticated = true;
+      _error = null;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Выход из системы
   Future<void> logout() async {
-    _token = null;
-    _userId = null;
-    _userName = null;
-    _userEmail = null;
-    _isAuthenticated = false;
+    try {
+      await _apiService.logout();
+    } catch (e) {
+      // Игнорируем ошибки при logout
+    } finally {
+      _user = null;
+      _isAuthenticated = false;
+      _error = null;
+      notifyListeners();
+    }
+  }
 
-    // Clear SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('auth_token');
-    await prefs.remove('user_id');
-    await prefs.remove('user_name');
-    await prefs.remove('user_email');
+  // Обновление профиля
+  Future<bool> updateProfile({
+    String? name,
+    String? phone,
+    String? bio,
+    String? avatarUrl,
+  }) async {
+    try {
+      _setLoading(true);
+      _error = null;
+      
+      final updatedProfile = await _apiService.updateProfile(
+        name: name,
+        phone: phone,
+        bio: bio,
+        avatarUrl: avatarUrl,
+      );
+      
+      _user = updatedProfile;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
 
+  // Очистка ошибки
+  void clearError() {
+    _error = null;
     notifyListeners();
   }
 
-  Future<void> updateProfile({String? name, String? email}) async {
-    if (name != null) _userName = name;
-    if (email != null) _userEmail = email;
-
-    // Save to SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    if (name != null) await prefs.setString('user_name', name);
-    if (email != null) await prefs.setString('user_email', email);
-
+  // Приватные методы
+  void _setLoading(bool loading) {
+    _isLoading = loading;
     notifyListeners();
+  }
+
+  // Проверка, является ли пользователь администратором
+  bool get isAdmin {
+    if (_user == null) return false;
+    return _user!['role'] == 'admin' || _user!['is_admin'] == true;
+  }
+
+  // Получение ID пользователя
+  String? get userId {
+    return _user?['id'];
+  }
+
+  // Получение имени пользователя
+  String? get userName {
+    return _user?['name'];
+  }
+
+  // Получение email пользователя
+  String? get userEmail {
+    return _user?['email'];
+  }
+
+  // Получение аватара пользователя
+  String? get userAvatar {
+    return _user?['avatar_url'];
   }
 }
+

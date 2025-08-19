@@ -1,50 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
-import '../screens/product_detail_screen.dart';
+import '../models/product_model.dart';
 
 class ProductCard extends StatelessWidget {
-  final String id;
-  final String title;
-  final int price;
-  final int? oldPrice;
-  final int? discount;
-  final String imageUrl;
-  final String brand;
-  final double rating;
-  final int reviewCount;
+  final ProductModel product;
+  final VoidCallback? onTap;
 
   const ProductCard({
     super.key,
-    required this.id,
-    required this.title,
-    required this.price,
-    this.oldPrice,
-    this.discount,
-    required this.imageUrl,
-    required this.brand,
-    required this.rating,
-    required this.reviewCount,
+    required this.product,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ProductDetailScreen(
-              productId: id,
-              title: title,
-              price: price,
-              oldPrice: oldPrice,
-              discount: discount,
-              imageUrl: imageUrl,
-              brand: brand,
-              rating: rating,
-              reviewCount: reviewCount,
-            ),
+      onTap: onTap ?? () {
+        // TODO: Навигация к детальному экрану продукта
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Открыть ${product.title}'),
+            duration: const Duration(seconds: 1),
           ),
         );
       },
@@ -71,7 +48,7 @@ class ProductCard extends StatelessWidget {
                     top: Radius.circular(16),
                   ),
                   child: CachedNetworkImage(
-                    imageUrl: imageUrl,
+                    imageUrl: product.imageUrl ?? 'https://via.placeholder.com/400x400',
                     height: 200,
                     width: double.infinity,
                     fit: BoxFit.cover,
@@ -94,7 +71,7 @@ class ProductCard extends StatelessWidget {
                 ),
                 
                 // Badge скидки
-                if (discount != null)
+                if (product.discount != null && product.discount! > 0)
                   Positioned(
                     top: 12,
                     left: 12,
@@ -108,7 +85,7 @@ class ProductCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '-$discount%',
+                        '-${product.discount}%',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
@@ -123,23 +100,30 @@ class ProductCard extends StatelessWidget {
                   top: 12,
                   right: 12,
                   child: Container(
-                    width: 32,
-                    height: 32,
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.9),
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
                       onPressed: () {
-                        // TODO: Add to favorites
+                        // TODO: Добавить/убрать из избранного
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Добавить ${product.title} в избранное'),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
                       },
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.favorite_border,
-                        size: 16,
-                        color: Colors.grey,
+                        size: 20,
+                        color: Colors.grey.shade600,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
                       ),
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
                     ),
                   ),
                 ),
@@ -148,29 +132,29 @@ class ProductCard extends StatelessWidget {
             
             // Информация о товаре
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Бренд
-                  Text(
-                    brand,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w600,
+                  if (product.brand != null)
+                    Text(
+                      product.brand!,
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                  
-                  const SizedBox(height: 4),
                   
                   // Название товара
+                  const SizedBox(height: 4),
                   Text(
-                    title,
+                    product.title,
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      height: 1.3,
+                      height: 1.2,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -178,58 +162,117 @@ class ProductCard extends StatelessWidget {
                   
                   const SizedBox(height: 8),
                   
+                  // Цена
+                  Row(
+                    children: [
+                      Text(
+                        '${product.price.toStringAsFixed(0)} ₽',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      
+                      // Старая цена
+                      if (product.oldPrice != null && product.oldPrice! > product.price)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: Text(
+                            '${product.oldPrice!.toStringAsFixed(0)} ₽',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade500,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 8),
+                  
                   // Рейтинг и отзывы
                   Row(
                     children: [
-                      Icon(
-                        Icons.star,
-                        size: 16,
-                        color: Colors.amber.shade600,
+                      // Звезды
+                      Row(
+                        children: List.generate(5, (index) {
+                          final rating = product.rating ?? 0;
+                          final starRating = index < rating.floor() 
+                              ? 1.0 
+                              : (index == rating.floor() ? rating - rating.floor() : 0.0);
+                          
+                          return Icon(
+                            starRating == 1.0 
+                                ? Icons.star 
+                                : starRating > 0 
+                                    ? Icons.star_half 
+                                    : Icons.star_border,
+                            size: 16,
+                            color: starRating > 0 ? Colors.amber : Colors.grey.shade300,
+                          );
+                        }),
                       ),
+                      
                       const SizedBox(width: 4),
-                      Text(
-                        rating.toString(),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                      
+                      // Рейтинг
+                      if (product.rating != null)
+                        Text(
+                          '${product.rating!.toStringAsFixed(1)}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
+                      
                       const SizedBox(width: 4),
-                      Text(
-                        '($reviewCount)',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
+                      
+                      // Количество отзывов
+                      if (product.reviewCount != null)
+                        Text(
+                          '(${product.reviewCount})',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade500,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                   
                   const SizedBox(height: 12),
                   
-                  // Цена
-                  Row(
-                    children: [
-                      Text(
-                        '${(price / 1000).toStringAsFixed(1)}k ₽',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
+                  // Кнопка добавления в корзину
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // TODO: Добавить в корзину
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('${product.title} добавлен в корзину'),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      if (oldPrice != null) ...[
-                        const SizedBox(width: 8),
-                        Text(
-                          '${(oldPrice! / 1000).toStringAsFixed(1)}k ₽',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade500,
-                            decoration: TextDecoration.lineThrough,
-                          ),
+                      child: const Text(
+                        'В корзину',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ],
-                    ],
+                      ),
+                    ),
                   ),
                 ],
               ),

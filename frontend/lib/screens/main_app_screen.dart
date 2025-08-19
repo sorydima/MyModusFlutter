@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
 import '../widgets/bottom_navigation_bar.dart';
-import 'product_feed_screen.dart';
-import 'feed_screen.dart';
-import 'search_screen.dart';
-import 'chats_list_screen.dart';
-import 'profile_screen.dart';
+import '../widgets/product_feed.dart';
+import '../widgets/social_feed.dart';
+import '../widgets/search_screen.dart';
+import '../widgets/chats_list_screen.dart';
+import '../widgets/profile_screen.dart';
+import '../screens/web3_screen.dart';
 
 class MainAppScreen extends StatefulWidget {
   const MainAppScreen({super.key});
@@ -15,16 +17,19 @@ class MainAppScreen extends StatefulWidget {
 }
 
 class _MainAppScreenState extends State<MainAppScreen> {
-  int _currentIndex = 0;
   final PageController _pageController = PageController();
+  int _currentIndex = 0;
+  bool _isInitialized = false;
 
-  final List<Widget> _screens = [
-    const ProductFeedScreen(),
-    const FeedScreen(),
-    const SearchScreen(),
-    const ChatsListScreen(),
-    const ProfileScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    
+    // Инициализируем провайдеры при загрузке экрана
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeProviders();
+    });
+  }
 
   @override
   void dispose() {
@@ -32,10 +37,34 @@ class _MainAppScreenState extends State<MainAppScreen> {
     super.dispose();
   }
 
-  void _onPageChanged(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
+  Future<void> _initializeProviders() async {
+    if (_isInitialized) return;
+    
+    try {
+      final appProvider = context.read<AppProvider>();
+      
+      // Инициализируем все провайдеры
+      await Future.wait([
+        appProvider.authProvider.initialize(),
+        appProvider.productProvider.initialize(),
+        appProvider.socialProvider.initialize(),
+        appProvider.web3Provider.initialize(),
+      ]);
+      
+      setState(() {
+        _isInitialized = true;
+      });
+    } catch (e) {
+      // Обрабатываем ошибки инициализации
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка инициализации: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
   }
 
   void _onTabTapped(int index) {
@@ -49,35 +78,61 @@ class _MainAppScreenState extends State<MainAppScreen> {
     );
   }
 
+  void _onPageChanged(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: _onPageChanged,
-        children: _screens,
-      ),
-      bottomNavigationBar: BottomNavigationBarWidget(
+      body: _isInitialized
+          ? PageView(
+              controller: _pageController,
+              onPageChanged: _onPageChanged,
+              children: const [
+                ProductFeed(),
+                SocialFeed(),
+                SearchScreen(),
+                Web3Screen(),
+                ProfileScreen(),
+              ],
+            )
+          : _buildLoadingScreen(),
+      bottomNavigationBar: CustomBottomNavigationBar(
         currentIndex: _currentIndex,
+        onTap: _onTabTapped,
       ),
       floatingActionButton: _buildFloatingActionButton(),
     );
   }
 
-  Widget? _buildFloatingActionButton() {
-    // Показываем FAB только на вкладке ленты
-    if (_currentIndex == 1) {
-      return FloatingActionButton(
-        onPressed: () => _createPost(),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-        child: const Icon(Icons.add),
-      );
-    }
-    return null;
+  Widget _buildLoadingScreen() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text('Загрузка приложения...'),
+        ],
+      ),
+    );
   }
 
-  void _createPost() {
-    context.push('/create-post');
+  Widget? _buildFloatingActionButton() {
+    // Показываем FAB только на социальной ленте
+    if (_currentIndex != 1) return null;
+    
+    return FloatingActionButton(
+      onPressed: () {
+        // TODO: Навигация к экрану создания поста
+        Navigator.pushNamed(context, '/create-post');
+      },
+      backgroundColor: Theme.of(context).colorScheme.primary,
+      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+      child: const Icon(Icons.add),
+    );
   }
 }

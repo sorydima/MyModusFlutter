@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
 import 'product_card.dart';
+import 'shimmer_card.dart';
 
-class ProductGrid extends StatelessWidget {
+class ProductGrid extends StatefulWidget {
   final int categoryIndex;
 
   const ProductGrid({
@@ -11,118 +14,231 @@ class ProductGrid extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    // Тестовые данные товаров
-    final products = [
-      {
-        'id': '1',
-        'title': 'Nike Air Max 270',
-        'price': 12990,
-        'oldPrice': 15990,
-        'discount': 19,
-        'imageUrl': 'https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=Nike+Air+Max+270',
-        'brand': 'Nike',
-        'rating': 4.8,
-        'reviewCount': 127,
-      },
-      {
-        'id': '2',
-        'title': 'Adidas Ultraboost 22',
-        'price': 18990,
-        'oldPrice': null,
-        'discount': null,
-        'imageUrl': 'https://via.placeholder.com/400x400/4ECDC4/FFFFFF?text=Adidas+Ultraboost+22',
-        'brand': 'Adidas',
-        'rating': 4.9,
-        'reviewCount': 89,
-      },
-      {
-        'id': '3',
-        'title': 'Levi\'s 501 Original Jeans',
-        'price': 7990,
-        'oldPrice': 9990,
-        'discount': 20,
-        'imageUrl': 'https://via.placeholder.com/400x400/45B7D1/FFFFFF?text=Levis+501+Jeans',
-        'brand': 'Levi\'s',
-        'rating': 4.6,
-        'reviewCount': 203,
-      },
-      {
-        'id': '4',
-        'title': 'Apple Watch Series 8',
-        'price': 45990,
-        'oldPrice': 49990,
-        'discount': 8,
-        'imageUrl': 'https://via.placeholder.com/400x400/96CEB4/FFFFFF?text=Apple+Watch+Series+8',
-        'brand': 'Apple',
-        'rating': 4.7,
-        'reviewCount': 156,
-      },
-      {
-        'id': '5',
-        'title': 'Samsung Galaxy S23',
-        'price': 89990,
-        'oldPrice': 99990,
-        'discount': 10,
-        'imageUrl': 'https://via.placeholder.com/400x400/FFE66D/000000?text=Samsung+S23',
-        'brand': 'Samsung',
-        'rating': 4.5,
-        'reviewCount': 89,
-      },
-      {
-        'id': '6',
-        'title': 'Converse Chuck Taylor',
-        'price': 5990,
-        'oldPrice': 7990,
-        'discount': 25,
-        'imageUrl': 'https://via.placeholder.com/400x400/FF6B9D/FFFFFF?text=Converse+Chuck',
-        'brand': 'Converse',
-        'rating': 4.4,
-        'reviewCount': 312,
-      },
-    ];
+  State<ProductGrid> createState() => _ProductGridState();
+}
 
-    // Фильтрация по категории
-    List<Map<String, dynamic>> filteredProducts = products;
-    if (categoryIndex > 0) {
-      final categoryNames = ['Все', 'Одежда', 'Обувь', 'Аксессуары'];
-      final categoryName = categoryNames[categoryIndex];
-      
-      if (categoryName == 'Обувь') {
-        filteredProducts = products.where((p) => 
-          p['brand'] == 'Nike' || p['brand'] == 'Adidas' || p['brand'] == 'Converse'
-        ).toList();
-      } else if (categoryName == 'Одежда') {
-        filteredProducts = products.where((p) => p['brand'] == 'Levi\'s').toList();
-      } else if (categoryName == 'Аксессуары') {
-        filteredProducts = products.where((p) => 
-          p['brand'] == 'Apple' || p['brand'] == 'Samsung'
-        ).toList();
-      }
+class _ProductGridState extends State<ProductGrid> {
+  final ScrollController _scrollController = ScrollController();
+  bool _isLoadingMore = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    
+    // Загружаем продукты при инициализации
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadProducts();
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= 
+        _scrollController.position.maxScrollExtent - 200) {
+      _loadMoreProducts();
     }
+  }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: MasonryGridView.count(
+  Future<void> _loadProducts() async {
+    final appProvider = context.read<AppProvider>();
+    final productProvider = appProvider.productProvider;
+    
+    // Устанавливаем категорию и загружаем продукты
+    final categoryNames = ['Все', 'Одежда', 'Обувь', 'Аксессуары'];
+    if (widget.categoryIndex > 0 && widget.categoryIndex < categoryNames.length) {
+      final categoryName = categoryNames[widget.categoryIndex];
+      await productProvider.filterByCategory(categoryName);
+    } else {
+      await productProvider.loadProducts(refresh: true);
+    }
+  }
+
+  Future<void> _loadMoreProducts() async {
+    if (_isLoadingMore) return;
+    
+    final appProvider = context.read<AppProvider>();
+    final productProvider = appProvider.productProvider;
+    
+    if (productProvider.hasMore) {
+      setState(() {
+        _isLoadingMore = true;
+      });
+      
+      await productProvider.loadProducts();
+      
+      setState(() {
+        _isLoadingMore = false;
+      });
+    }
+  }
+
+  Future<void> _refreshProducts() async {
+    await _loadProducts();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AppProvider>(
+      builder: (context, appProvider, child) {
+        final productProvider = appProvider.productProvider;
+        
+        return RefreshIndicator(
+          onRefresh: _refreshProducts,
+          child: CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              // Основная сетка продуктов
+              SliverPadding(
+                padding: const EdgeInsets.all(16.0),
+                sliver: _buildProductGrid(productProvider),
+              ),
+              
+              // Индикатор загрузки для подгрузки
+              if (_isLoadingMore)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                ),
+              
+              // Сообщение о конце списка
+              if (!productProvider.hasMore && productProvider.products.isNotEmpty)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Center(
+                      child: Text(
+                        'Больше продуктов нет',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildProductGrid(ProductProvider productProvider) {
+    // Показываем shimmer во время загрузки
+    if (productProvider.isLoading && productProvider.products.isEmpty) {
+      return SliverMasonryGrid.count(
         crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        itemCount: filteredProducts.length,
-        itemBuilder: (context, index) {
-          final product = filteredProducts[index];
-          return ProductCard(
-            id: product['id'],
-            title: product['title'],
-            price: product['price'],
-            oldPrice: product['oldPrice'],
-            discount: product['discount'],
-            imageUrl: product['imageUrl'],
-            brand: product['brand'],
-            rating: product['rating'],
-            reviewCount: product['reviewCount'],
-          );
-        },
-      ),
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 16,
+        itemCount: 6,
+        itemBuilder: (context, index) => const ShimmerCard(),
+      );
+    }
+    
+    // Показываем ошибку, если есть
+    if (productProvider.error != null && productProvider.products.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Container(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Ошибка загрузки продуктов',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                productProvider.error!,
+                style: Theme.of(context).textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () {
+                  productProvider.clearError();
+                  _loadProducts();
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Повторить'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
+    // Показываем пустое состояние, если нет продуктов
+    if (productProvider.products.isEmpty && !productProvider.isLoading) {
+      return SliverToBoxAdapter(
+        child: Container(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            children: [
+              Icon(
+                Icons.inventory_2_outlined,
+                size: 64,
+                color: Colors.grey.shade400,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Продукты не найдены',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Попробуйте изменить фильтры или поиск',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey.shade500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
+    // Основная сетка продуктов
+    return SliverMasonryGrid.count(
+      crossAxisCount: 2,
+      mainAxisSpacing: 16,
+      crossAxisSpacing: 16,
+      itemCount: productProvider.products.length,
+      itemBuilder: (context, index) {
+        final product = productProvider.products[index];
+        return ProductCard(
+          product: product,
+          onTap: () {
+            // TODO: Навигация к детальному экрану продукта
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Открыть ${product.title}'),
+                duration: const Duration(seconds: 1),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
