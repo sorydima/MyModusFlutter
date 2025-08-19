@@ -70,6 +70,7 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/animations/
+    - assets/abi/
   
   fonts:
     - family: Inter

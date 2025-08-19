@@ -1,0 +1,92 @@
+{
+  "networks": {
+    "hardhat": {
+      "chainId": 31337,
+      "url": "http://127.0.0.1:8545",
+      "contracts": {
+        "MyModusNFT": {
+          "address": "0x0000000000000000000000000000000000000000",
+          "abi": "./abi/MyModusNFT.json"
+        },
+        "MyModusLoyalty": {
+          "address": "0x0000000000000000000000000000000000000000",
+          "abi": "./abi/MyModusLoyalty.json"
+        }
+      }
+    },
+    "ganache": {
+      "chainId": 1337,
+      "url": "http://127.0.0.1:7545",
+      "contracts": {
+        "MyModusNFT": {
+          "address": "0x0000000000000000000000000000000000000000",
+          "abi": "./abi/MyModusNFT.json"
+        },
+        "MyModusLoyalty": {
+          "address": "0x0000000000000000000000000000000000000000",
+          "abi": "./abi/MyModusLoyalty.json"
+        }
+      }
+    },
+    "sepolia": {
+      "chainId": 11155111,
+      "url": "https://sepolia.infura.io/v3/YOUR_INFURA_PROJECT_ID",
+      "contracts": {
+        "MyModusNFT": {
+          "address": "0x0000000000000000000000000000000000000000",
+          "abi": "./abi/MyModusNFT.json"
+        },
+        "MyModusLoyalty": {
+          "address": "0x0000000000000000000000000000000000000000",
+          "abi": "./abi/MyModusLoyalty.json"
+        }
+      }
+    },
+    "mumbai": {
+      "chainId": 80001,
+      "url": "https://polygon-mumbai.infura.io/v3/YOUR_INFURA_PROJECT_ID",
+      "contracts": {
+        "MyModusNFT": {
+          "address": "0x0000000000000000000000000000000000000000",
+          "abi": "./abi/MyModusNFT.json"
+        },
+        "MyModusLoyalty": {
+          "address": "0x0000000000000000000000000000000000000000",
+          "abi": "./abi/MyModusLoyalty.json"
+        }
+      }
+    }
+  },
+  "defaultNetwork": "hardhat",
+  "contractSettings": {
+    "MyModusNFT": {
+      "name": "MyModus NFT Collection",
+      "symbol": "MMNFT",
+      "baseURI": "ipfs://",
+      "maxSupply": 10000
+    },
+    "MyModusLoyalty": {
+      "name": "MyModus Loyalty Token",
+      "symbol": "MMLT",
+      "decimals": 18,
+      "initialSupply": "1000000000000000000000000",
+      "mintPrice": "100000000000000000",
+      "maxSupply": "10000000000000000000000000"
+    }
+  },
+  "deployment": {
+    "gasLimit": 5000000,
+    "gasPrice": "20000000000",
+    "confirmations": 5,
+    "timeout": 60000
+  },
+  "verification": {
+    "enabled": false,
+    "etherscan": {
+      "apiKey": "YOUR_ETHERSCAN_API_KEY"
+    },
+    "polygonscan": {
+      "apiKey": "YOUR_POLYGONSCAN_API_KEY"
+    }
+  }
+}
