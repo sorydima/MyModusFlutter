@@ -323,6 +323,26 @@ cp .env .env.prod
 docker-compose -f docker-compose.full.yml --env-file .env.prod up -d
 ```
 
+## 📊 Project Progress
+
+### ✅ Completed Features
+- **Backend**: 100% ✅ - Full Dart backend with API, scrapers, and services
+- **Frontend Core**: 100% ✅ - Complete Flutter UI with navigation and state management
+- **Web3 Integration**: 100% ✅ - Full Web3 functionality with wallet connection
+- **Smart Contracts**: 100% ✅ - NFT and loyalty token contracts deployed
+- **Smart Contracts Integration**: 100% ✅ - Frontend integration with test mode
+- **MetaMask & IPFS Integration**: 100% ✅ - Real wallet and decentralized storage
+
+### 🚧 In Progress
+- **Testing**: 50% 🚧 - Unit tests for providers, widget tests for UI
+- **AI Services**: 0% 📋 - Recommendations, content generation, moderation
+
+### 📋 Planned
+- **Production Features**: CI/CD, monitoring, security, HTTPS
+- **Documentation**: API docs, user guides, deployment guides
+
+**Overall Progress**: ~85% of planned functionality
+
 ## 🤝 Разработка
 
 ### Добавление нового парсера

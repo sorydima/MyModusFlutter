@@ -2,6 +2,14 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'web3_models.g.dart';
 
+/// Режим подключения кошелька
+enum WalletConnectionMode {
+  test,      // Тестовый режим
+  metamask,  // MetaMask
+  walletconnect, // WalletConnect
+  privatekey, // Приватный ключ
+}
+
 @JsonSerializable()
 class NFTMetadata {
   final String name;

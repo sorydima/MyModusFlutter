@@ -5,6 +5,8 @@ import '../widgets/web3_wallet_card.dart';
 import '../widgets/nft_grid.dart';
 import '../widgets/loyalty_tokens_list.dart';
 import '../widgets/transaction_history.dart';
+import 'web3_demo_screen.dart';
+import 'metamask_ipfs_demo_screen.dart';
 
 class Web3Screen extends StatefulWidget {
   const Web3Screen({super.key});
@@ -33,6 +35,18 @@ class _Web3ScreenState extends State<Web3Screen> {
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
                 actions: [
+                  // Кнопка демо режима
+                  IconButton(
+                    onPressed: () => _navigateToDemo(context),
+                    icon: const Icon(Icons.science),
+                    tooltip: 'Web3 Demo',
+                  ),
+                  // Кнопка MetaMask & IPFS Demo
+                  IconButton(
+                    onPressed: () => _navigateToMetaMaskIPFSDemo(context),
+                    icon: const Icon(Icons.account_balance_wallet),
+                    tooltip: 'MetaMask & IPFS Demo',
+                  ),
                   if (web3Provider.isConnected)
                     IconButton(
                       onPressed: () => _showDisconnectDialog(context),
@@ -94,6 +108,24 @@ class _Web3ScreenState extends State<Web3Screen> {
       default:
         return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
+  }
+
+  void _navigateToDemo(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const Web3DemoScreen(),
+      ),
+    );
+  }
+
+  void _navigateToMetaMaskIPFSDemo(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const MetaMaskIPFSDemoScreen(),
+      ),
+    );
   }
 
   void _showDisconnectDialog(BuildContext context) {
