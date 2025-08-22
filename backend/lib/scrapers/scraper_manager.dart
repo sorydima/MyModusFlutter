@@ -4,6 +4,7 @@ import 'package:botasaurus/botasaurus.dart';
 import 'wildberries_scraper.dart';
 import 'ozon_scraper.dart';
 import 'lamoda_scraper.dart';
+import 'avito_scraper.dart';
 import '../database.dart';
 import '../models.dart';
 
@@ -15,6 +16,7 @@ class ScraperManager {
     _scrapers['wildberries'] = WildberriesScraper(db: db);
     _scrapers['ozon'] = OzonScraper(db: db);
     _scrapers['lamoda'] = LamodaScraper(db: db);
+    _scrapers['avito'] = AvitoScraper(db: db);
   }
 
   Future<void> scrapeAll() async {

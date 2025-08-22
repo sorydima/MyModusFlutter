@@ -48,6 +48,16 @@ dependencies:
   package_info_plus: ^4.2.0
   device_info_plus: ^9.1.1
   
+  # Notifications
+  flutter_local_notifications: ^16.3.0
+  
+  # HTTP Client
+  http: ^1.1.0
+  
+  # Camera and AR
+  camera: ^0.10.5+9
+  image_picker: ^1.0.7
+  
   # UI Components
   cupertino_icons: ^1.0.6
   flutter_svg: ^2.0.9

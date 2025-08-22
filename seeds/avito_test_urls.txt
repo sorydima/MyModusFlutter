@@ -1,0 +1,11 @@
+# Тестовые URL с Avito для проверки интеграции
+# Одежда и обувь
+https://www.avito.ru/user/2f8b6893c14fcb7aa600e1df2010ddd2/profile
+
+# Дополнительные тестовые URL для различных категорий
+# Если нужны конкретные товары, можно добавить сюда реальные ссылки
+
+# Примеры форматов URL Avito:
+# https://www.avito.ru/moskva/odezhda_obuv_aksessuary/item_123456789
+# https://www.avito.ru/sankt-peterburg/elektronika/item_987654321
+# https://www.avito.ru/novosibirsk/dom_i_dacha/item_456789123

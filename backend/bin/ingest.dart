@@ -4,6 +4,7 @@ import 'package:postgres/postgres.dart';
 import '../lib/scrapers/adapters/ozon_adapter.dart' as ozon;
 import '../lib/scrapers/adapters/wb_adapter.dart' as wb;
 import '../lib/scrapers/adapters/lamoda_adapter.dart' as lamoda;
+import '../lib/scrapers/adapters/avito_adapter.dart' as avito;
 
 Future<PostgreSQLConnection> connectDb() async {
   final dbUrl = Platform.environment['DATABASE_URL'] ?? 'postgres://mymodus:mymodus_pass@localhost:5432/mymodus_db';
@@ -34,7 +35,7 @@ void main(List<String> args) async {
   final seedsFile = args.isNotEmpty ? args[0] : 'seeds/seed_urls.txt';
   final conn = await connectDb();
 
-  final marketplacesMap = {'ozon':'Ozon','wb':'Wildberries','lamoda':'Lamoda'};
+  final marketplacesMap = {'ozon':'Ozon','wb':'Wildberries','lamoda':'Lamoda','avito':'Avito'};
   final mapIds = <String,int>{};
   for (final e in marketplacesMap.entries) {
     mapIds[e.key] = await ensureMarketplace(conn, e.key, e.value);
@@ -56,6 +57,8 @@ void main(List<String> args) async {
       parsed = await wb.parseWB(url);
     } else if (url.contains('lamoda')) {
       parsed = await lamoda.parseLamoda(url);
+    } else if (url.contains('avito')) {
+      parsed = await avito.parseAvito(url);
     } else {
       print('Unknown marketplace for url: \$url');
       continue;

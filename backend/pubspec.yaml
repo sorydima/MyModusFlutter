@@ -27,6 +27,10 @@ dependencies:
   http: ^1.1.0
   html: ^0.15.4
   
+  # WebDriver for scraping
+  webdriver: ^3.0.2
+  botasaurus: ^4.0.0
+  
   # Web3 & Blockchain
   web3dart: ^2.7.2
   bip39: ^1.0.6

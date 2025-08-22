@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
+import 'package:provider/provider.dart';
+import '../providers/ai_color_matcher_provider.dart';
+import '../services/ai_color_matcher_service.dart';
 
 class AIColorMatcherScreen extends StatefulWidget {
   const AIColorMatcherScreen({super.key});
@@ -11,688 +13,126 @@ class AIColorMatcherScreen extends StatefulWidget {
 class _AIColorMatcherScreenState extends State<AIColorMatcherScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
-  final TextEditingController _baseColorController = TextEditingController();
-  final TextEditingController _styleController = TextEditingController();
+  String _selectedHarmonyType = 'complementary';
+  String _selectedSeason = 'all';
+  String _selectedOccasion = 'all';
+  String _selectedCategory = 'all';
   
-  String _selectedColorScheme = 'Аналоговый';
-  String _selectedSeason = 'Лето';
-  String _selectedMood = 'Энергичный';
-  bool _isAnalyzing = false;
-  
-  List<Map<String, dynamic>> _colorPalettes = [];
-  List<Map<String, dynamic>> _favoriteCombinations = [];
-  List<Map<String, dynamic>> _colorHistory = [];
-  List<Map<String, dynamic>> _trendingColors = [];
-
-  final List<String> _colorSchemes = [
-    'Аналоговый', 'Монохромный', 'Триадный', 'Дополнительный', 'Раздельно-дополнительный'
-  ];
-
-  final List<String> _seasons = [
-    'Весна', 'Лето', 'Осень', 'Зима'
-  ];
-
-  final List<String> _moods = [
-    'Энергичный', 'Спокойный', 'Романтичный', 'Деловой', 'Креативный', 'Элегантный'
-  ];
-
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-    _loadMockData();
-    _initializeControllers();
-  }
-
-  void _initializeControllers() {
-    _baseColorController.text = '#FF6B6B';
-    _styleController.text = 'Современный минимализм';
-  }
-
-  void _loadMockData() {
-    _colorPalettes = [
-      {
-        'id': '1',
-        'name': 'Летний закат',
-        'baseColor': '#FF6B6B',
-        'colors': ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'],
-        'scheme': 'Аналоговый',
-        'season': 'Лето',
-        'mood': 'Энергичный',
-        'createdAt': DateTime.now().subtract(const Duration(hours: 2)),
-        'likes': 45,
-        'downloads': 23,
-      },
-      {
-        'id': '2',
-        'name': 'Осенняя листва',
-        'baseColor': '#8B4513',
-        'colors': ['#8B4513', '#D2691E', '#CD853F', '#F4A460', '#DEB887'],
-        'scheme': 'Монохромный',
-        'season': 'Осень',
-        'mood': 'Спокойный',
-        'createdAt': DateTime.now().subtract(const Duration(hours: 1)),
-        'likes': 32,
-        'downloads': 18,
-      },
-    ];
-
-    _favoriteCombinations = [
-      {
-        'id': '1',
-        'name': 'Неоновые ночи',
-        'colors': ['#FF1493', '#00CED1', '#FFD700', '#FF4500', '#8A2BE2'],
-        'usage': 'Клубная одежда, аксессуары',
-        'createdAt': DateTime.now().subtract(const Duration(days: 1)),
-      },
-      {
-        'id': '2',
-        'name': 'Пастельные мечты',
-        'colors': ['#FFB6C1', '#87CEEB', '#98FB98', '#F0E68C', '#DDA0DD'],
-        'usage': 'Повседневная одежда, детская мода',
-        'createdAt': DateTime.now().subtract(const Duration(days: 2)),
-      },
-    ];
-
-    _colorHistory = [
-      {
-        'id': '1',
-        'baseColor': '#FF6B6B',
-        'scheme': 'Аналоговый',
-        'createdAt': DateTime.now().subtract(const Duration(days: 1)),
-        'resultCount': 5,
-      },
-      {
-        'id': '2',
-        'baseColor': '#4ECDC4',
-        'scheme': 'Триадный',
-        'createdAt': DateTime.now().subtract(const Duration(days: 2)),
-        'resultCount': 4,
-      },
-    ];
-
-    _trendingColors = [
-      {
-        'color': '#FF6B6B',
-        'name': 'Коралловый',
-        'trend': 'Восходящий',
-        'usage': 'Летняя одежда, аксессуары',
-        'percentage': 85,
-      },
-      {
-        'color': '#4ECDC4',
-        'name': 'Мятный',
-        'trend': 'Стабильный',
-        'usage': 'Повседневная одежда, интерьер',
-        'percentage': 72,
-      },
-      {
-        'color': '#45B7D1',
-        'name': 'Голубой',
-        'trend': 'Нисходящий',
-        'usage': 'Деловая одежда, классика',
-        'percentage': 58,
-      },
-    ];
+    _tabController = TabController(length: 6, vsync: this);
+    
+    // Загружаем данные при инициализации
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<AIColorMatcherProvider>();
+      provider.getSeasonalPalettes();
+      provider.analyzeColorTrends();
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    _baseColorController.dispose();
-    _styleController.dispose();
     super.dispose();
-  }
-
-  Future<void> _generateColorPalette() async {
-    if (_baseColorController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Введите базовый цвет')),
-      );
-      return;
-    }
-
-    setState(() {
-      _isAnalyzing = true;
-    });
-
-    // Имитация генерации
-    await Future.delayed(const Duration(seconds: 2));
-
-    final newPalette = {
-      'id': DateTime.now().millisecondsSinceEpoch.toString(),
-      'name': 'Новая палитра',
-      'baseColor': _baseColorController.text.trim(),
-      'colors': _generateRandomColors(_baseColorController.text.trim()),
-      'scheme': _selectedColorScheme,
-      'season': _selectedSeason,
-      'mood': _selectedMood,
-      'createdAt': DateTime.now(),
-      'likes': 0,
-      'downloads': 0,
-    };
-
-    setState(() {
-      _colorPalettes.insert(0, newPalette);
-      _isAnalyzing = false;
-    });
-
-    // Добавляем в историю
-    _colorHistory.insert(0, {
-      'id': newPalette['id'],
-      'baseColor': newPalette['baseColor'],
-      'scheme': newPalette['scheme'],
-      'createdAt': newPalette['createdAt'],
-      'resultCount': newPalette['colors'].length,
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Цветовая палитра создана!')),
-    );
-  }
-
-  List<String> _generateRandomColors(String baseColor) {
-    final colors = [
-      baseColor,
-      '#${_getRandomHex()}',
-      '#${_getRandomHex()}',
-      '#${_getRandomHex()}',
-      '#${_getRandomHex()}',
-    ];
-    return colors;
-  }
-
-  String _getRandomHex() {
-    final random = Random();
-    final r = random.nextInt(256);
-    final g = random.nextInt(256);
-    final b = random.nextInt(256);
-    return '${r.toRadixString(16).padLeft(2, '0')}${g.toRadixString(16).padLeft(2, '0')}${b.toRadixString(16).padLeft(2, '0')}';
-  }
-
-  void _likePalette(String paletteId) {
-    setState(() {
-      final palette = _colorPalettes.firstWhere((p) => p['id'] == paletteId);
-      palette['likes'] = (palette['likes'] ?? 0) + 1;
-    });
-  }
-
-  void _downloadPalette(String paletteId) {
-    setState(() {
-      final palette = _colorPalettes.firstWhere((p) => p['id'] == paletteId);
-      palette['downloads'] = (palette['downloads'] ?? 0) + 1;
-    });
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Палитра скачана!')),
-    );
-  }
-
-  void _addToFavorites(String paletteId) {
-    final palette = _colorPalettes.firstWhere((p) => p['id'] == paletteId);
-    final newFavorite = {
-      'id': DateTime.now().millisecondsSinceEpoch.toString(),
-      'name': palette['name'],
-      'colors': palette['colors'],
-      'usage': 'Автоматически определено',
-      'createdAt': DateTime.now(),
-    };
-
-    setState(() {
-      _favoriteCombinations.insert(0, newFavorite);
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Добавлено в избранное!')),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI Подбор Цветов'),
-        backgroundColor: Colors.transparent,
+        title: const Text('🎨 AI Color Matcher'),
+        backgroundColor: Colors.purple[100],
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.favorite),
-            onPressed: () {
-              // Показать избранное
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.trending_up),
-            onPressed: () {
-              // Показать тренды
-            },
-          ),
-        ],
+        bottom: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          indicatorColor: Colors.purple[300],
+          labelColor: Colors.purple[800],
+          unselectedLabelColor: Colors.purple[600],
+          tabs: const [
+            Tab(text: '📸 Фото'),
+            Tab(text: '🎨 Палитра'),
+            Tab(text: '🔗 Гармония'),
+            Tab(text: '💡 Рекомендации'),
+            Tab(text: '📊 Тренды'),
+            Tab(text: '📚 История'),
+          ],
+        ),
       ),
-      body: Column(
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          // Форма настроек
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  spreadRadius: 1,
-                  blurRadius: 10,
-                ),
-              ],
-            ),
-            margin: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Создайте цветовую палитру',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                
-                // Базовый цвет и схема
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _baseColorController,
-                        decoration: const InputDecoration(
-                          labelText: 'Базовый цвет',
-                          hintText: '#FF6B6B',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedColorScheme,
-                        decoration: const InputDecoration(
-                          labelText: 'Цветовая схема',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: _colorSchemes.map((scheme) {
-                          return DropdownMenuItem(
-                            value: scheme,
-                            child: Text(scheme),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedColorScheme = value!;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                
-                // Сезон и настроение
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedSeason,
-                        decoration: const InputDecoration(
-                          labelText: 'Сезон',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: _seasons.map((season) {
-                          return DropdownMenuItem(
-                            value: season,
-                            child: Text(season),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedSeason = value!;
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedMood,
-                        decoration: const InputDecoration(
-                          labelText: 'Настроение',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: _moods.map((mood) {
-                          return DropdownMenuItem(
-                            value: mood,
-                            child: Text(mood),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedMood = value!;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                
-                // Стиль и кнопка генерации
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _styleController,
-                        decoration: const InputDecoration(
-                          labelText: 'Стиль',
-                          hintText: 'Опишите желаемый стиль',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _isAnalyzing ? null : _generateColorPalette,
-                        icon: _isAnalyzing
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.palette),
-                        label: Text(_isAnalyzing ? 'Создаем...' : 'Создать палитру'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepPurple,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          
-          // Табы
-          TabBar(
-            controller: _tabController,
-            labelColor: Colors.deepPurple,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Colors.deepPurple,
-            tabs: const [
-              Tab(text: 'Палитры'),
-              Tab(text: 'Избранное'),
-              Tab(text: 'История'),
-              Tab(text: 'Тренды'),
-            ],
-          ),
-          
-          // Содержимое табов
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildPalettesTab(),
-                _buildFavoritesTab(),
-                _buildHistoryTab(),
-                _buildTrendsTab(),
-              ],
-            ),
-          ),
+          _buildPhotoTab(),
+          _buildPaletteTab(),
+          _buildHarmonyTab(),
+          _buildRecommendationsTab(),
+          _buildTrendsTab(),
+          _buildHistoryTab(),
         ],
       ),
     );
   }
 
-  Widget _buildPalettesTab() {
-    if (_colorPalettes.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.palette_outlined,
-              size: 64,
-              color: Colors.grey,
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Создайте первую цветовую палитру!',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _colorPalettes.length,
-      itemBuilder: (context, index) {
-        final palette = _colorPalettes[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 16),
+  // Вкладка "Фото"
+  Widget _buildPhotoTab() {
+    return Consumer<AIColorMatcherProvider>(
+      builder: (context, provider, child) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Цветовая палитра
-              Container(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          palette['name'],
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.favorite_border),
-                              onPressed: () => _addToFavorites(palette['id']),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.download),
-                              onPressed: () => _downloadPalette(palette['id']),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Цвета
-                    Row(
-                      children: (palette['colors'] as List<String>).map((color) {
-                        return Expanded(
-                          child: Container(
-                            height: 60,
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              color: _parseColor(color),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey[300]!),
-                            ),
-                            child: Center(
-                              child: Text(
-                                color,
-                                style: TextStyle(
-                                  color: _isLightColor(_parseColor(color)) ? Colors.black : Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    
-                    const SizedBox(height: 16),
-                    
-                    // Информация
-                    Row(
-                      children: [
-                        Chip(
-                          label: Text(palette['scheme']),
-                          backgroundColor: Colors.blue[100],
-                        ),
-                        const SizedBox(width: 8),
-                        Chip(
-                          label: Text(palette['season']),
-                          backgroundColor: Colors.green[100],
-                        ),
-                        const SizedBox(width: 8),
-                        Chip(
-                          label: Text(palette['mood']),
-                          backgroundColor: Colors.purple[100],
-                        ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 16),
-                    
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.favorite_border),
-                              onPressed: () => _likePalette(palette['id']),
-                            ),
-                            Text('${palette['likes']}'),
-                            const SizedBox(width: 16),
-                            IconButton(
-                              icon: const Icon(Icons.download),
-                              onPressed: () => _downloadPalette(palette['id']),
-                            ),
-                            Text('${palette['downloads']}'),
-                          ],
-                        ),
-                        Text(
-                          '${palette['createdAt'].hour}:${palette['createdAt'].minute.toString().padLeft(2, '0')}',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildFavoritesTab() {
-    if (_favoriteCombinations.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.favorite_border,
-              size: 64,
-              color: Colors.grey,
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Добавьте палитры в избранное!',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 0.8,
-      ),
-      itemCount: _favoriteCombinations.length,
-      itemBuilder: (context, index) {
-        final favorite = _favoriteCombinations[index];
-        return Card(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Цвета
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
+              _buildSectionTitle('Анализ цветов на фото'),
+              const SizedBox(height: 16),
+              
+              // Загрузка фото
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
                   child: Column(
-                    children: (favorite['colors'] as List<String>).map((color) {
-                      return Expanded(
-                        child: Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 4),
-                          decoration: BoxDecoration(
-                            color: _parseColor(color),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
+                    children: [
+                      const Icon(Icons.camera_alt, size: 48, color: Colors.purple),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Загрузите фото для анализа цветов',
+                        style: TextStyle(fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () => _showPhotoOptions(context, provider),
+                        icon: const Icon(Icons.photo_library),
+                        label: const Text('Выбрать фото'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple[600],
+                          foregroundColor: Colors.white,
                         ),
-                      );
-                    }).toList(),
+                      ),
+                    ],
                   ),
                 ),
               ),
               
-              // Информация
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      favorite['name'],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      favorite['usage'],
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
+              const SizedBox(height: 24),
+              
+              // Результаты анализа
+              if (provider.photoAnalysis != null) ...[
+                _buildAnalysisResults(provider.photoAnalysis!),
+                const SizedBox(height: 24),
+              ],
+              
+              // Ошибки
+              if (provider.photoAnalysisError != null) ...[
+                _buildErrorCard(provider.photoAnalysisError!),
+                const SizedBox(height: 24),
+              ],
+              
+              // Загрузка
+              if (provider.isAnalyzingPhoto) ...[
+                _buildLoadingCard('Анализируем фото...'),
+                const SizedBox(height: 24),
+              ],
             ],
           ),
         );
@@ -700,183 +140,976 @@ class _AIColorMatcherScreenState extends State<AIColorMatcherScreen>
     );
   }
 
-  Widget _buildHistoryTab() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _colorHistory.length,
-      itemBuilder: (context, index) {
-        final history = _colorHistory[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: _parseColor(history['baseColor']),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey[300]!),
-              ),
-              child: Center(
-                child: Text(
-                  history['baseColor'],
-                  style: TextStyle(
-                    color: _isLightColor(_parseColor(history['baseColor'])) ? Colors.black : Colors.white,
-                    fontSize: 8,
-                    fontWeight: FontWeight.bold,
+  // Вкладка "Палитра"
+  Widget _buildPaletteTab() {
+    return Consumer<AIColorMatcherProvider>(
+      builder: (context, provider, child) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionTitle('Персональная цветовая палитра'),
+              const SizedBox(height: 16),
+              
+              // Генерация палитры
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Создайте персональную палитру',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Фильтры
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedSeason,
+                              decoration: const InputDecoration(
+                                labelText: 'Сезон',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: [
+                                const DropdownMenuItem(value: 'all', child: Text('Все сезоны')),
+                                ...provider._colorMatcherService.getAvailableSeasons().map(
+                                  (season) => DropdownMenuItem(
+                                    value: season,
+                                    child: Text(provider._colorMatcherService.getSeasonName(season)),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                setState(() => _selectedSeason = value ?? 'all');
+                                provider.setSeason(value ?? 'all');
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedOccasion,
+                              decoration: const InputDecoration(
+                                labelText: 'Случай',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: [
+                                const DropdownMenuItem(value: 'all', child: Text('Все случаи')),
+                                ...provider._colorMatcherService.getAvailableOccasions().map(
+                                  (occasion) => DropdownMenuItem(
+                                    value: occasion,
+                                    child: Text(provider._colorMatcherService.getOccasionName(occasion)),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                setState(() => _selectedOccasion = value ?? 'all');
+                                provider.setOccasion(value ?? 'all');
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      ElevatedButton.icon(
+                        onPressed: () => _generatePersonalPalette(context, provider),
+                        icon: const Icon(Icons.palette),
+                        label: const Text('Сгенерировать палитру'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple[600],
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ),
-            title: Text('Базовый цвет: ${history['baseColor']}'),
-            subtitle: Text(
-              'Схема: ${history['scheme']} • ${history['resultCount']} цветов',
-            ),
-            trailing: Text(
-              '${history['createdAt'].day}.${history['createdAt'].month}.${history['createdAt'].year}',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 12,
-              ),
-            ),
-            onTap: () {
-              // Показать детали палитры
-            },
+              
+              const SizedBox(height: 24),
+              
+              // Персональная палитра
+              if (provider.personalPalette != null && provider.personalPalette!.isNotEmpty) ...[
+                _buildPersonalPalette(provider.personalPalette!),
+                const SizedBox(height: 24),
+              ],
+              
+              // Сезонные палитры
+              if (provider.seasonalPalettes != null) ...[
+                _buildSeasonalPalettes(provider.seasonalPalettes!),
+                const SizedBox(height: 24),
+              ],
+              
+              // Ошибки и загрузка
+              if (provider.paletteGenerationError != null) ...[
+                _buildErrorCard(provider.paletteGenerationError!),
+                const SizedBox(height: 24),
+              ],
+              
+              if (provider.isGeneratingPalette) ...[
+                _buildLoadingCard('Генерируем палитру...'),
+                const SizedBox(height: 24),
+              ],
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildTrendsTab() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Трендовые цвета',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+  // Вкладка "Гармония"
+  Widget _buildHarmonyTab() {
+    return Consumer<AIColorMatcherProvider>(
+      builder: (context, provider, child) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionTitle('Подбор гармоничных цветов'),
+              const SizedBox(height: 16),
+              
+              // Выбор базового цвета
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Выберите базовый цвет',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Палитра базовых цветов
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
+                          '#FFEAA7', '#DDA0DD', '#FF0000', '#00FF00',
+                          '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF',
+                        ].map((color) => _buildColorSwatch(
+                          color,
+                          () => _findHarmoniousColors(context, provider, color),
+                        )).toList(),
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Тип гармонии
+                      DropdownButtonFormField<String>(
+                        value: _selectedHarmonyType,
+                        decoration: const InputDecoration(
+                          labelText: 'Тип гармонии',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: provider._colorMatcherService.getAvailableHarmonyTypes().map(
+                          (type) => DropdownMenuItem(
+                            value: type,
+                            child: Text(provider._colorMatcherService.getHarmonyTypeName(type)),
+                          ),
+                        ).toList(),
+                        onChanged: (value) {
+                          setState(() => _selectedHarmonyType = value ?? 'complementary');
+                          provider.setHarmonyType(value ?? 'complementary');
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Результаты поиска гармоничных цветов
+              if (provider.harmoniousColors != null && provider.harmoniousColors!.isNotEmpty) ...[
+                _buildHarmoniousColors(provider.harmoniousColors!),
+                const SizedBox(height: 24),
+              ],
+              
+              // Ошибки и загрузка
+              if (provider.harmoniousColorsError != null) ...[
+                _buildErrorCard(provider.harmoniousColorsError!),
+                const SizedBox(height: 24),
+              ],
+              
+              if (provider.isFindingHarmoniousColors) ...[
+                _buildLoadingCard('Ищем гармоничные цвета...'),
+                const SizedBox(height: 24),
+              ],
+            ],
           ),
-          const SizedBox(height: 24),
-          
-          ..._trendingColors.map((trend) {
-            return Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              child: Row(
-                children: [
-                  // Цвет
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: _parseColor(trend['color']),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: Center(
-                      child: Text(
-                        trend['color'],
-                        style: TextStyle(
-                          color: _isLightColor(_parseColor(trend['color'])) ? Colors.black : Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+        );
+      },
+    );
+  }
+
+  // Вкладка "Рекомендации"
+  Widget _buildRecommendationsTab() {
+    return Consumer<AIColorMatcherProvider>(
+      builder: (context, provider, child) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionTitle('Цветовые рекомендации'),
+              const SizedBox(height: 16),
+              
+              // Фильтры для рекомендаций
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Настройте параметры',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedOccasion,
+                              decoration: const InputDecoration(
+                                labelText: 'Случай',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: [
+                                const DropdownMenuItem(value: 'all', child: Text('Все случаи')),
+                                ...provider._colorMatcherService.getAvailableOccasions().map(
+                                  (occasion) => DropdownMenuItem(
+                                    value: occasion,
+                                    child: Text(provider._colorMatcherService.getOccasionName(occasion)),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                setState(() => _selectedOccasion = value ?? 'all');
+                                provider.setOccasion(value ?? 'all');
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedSeason,
+                              decoration: const InputDecoration(
+                                labelText: 'Сезон',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: [
+                                const DropdownMenuItem(value: 'all', child: Text('Все сезоны')),
+                                ...provider._colorMatcherService.getAvailableSeasons().map(
+                                  (season) => DropdownMenuItem(
+                                    value: season,
+                                    child: Text(provider._colorMatcherService.getSeasonName(season)),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                setState(() => _selectedSeason = value ?? 'all');
+                                provider.setSeason(value ?? 'all');
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      ElevatedButton.icon(
+                        onPressed: () => _getRecommendations(context, provider),
+                        icon: const Icon(Icons.lightbulb),
+                        label: const Text('Получить рекомендации'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple[600],
+                          foregroundColor: Colors.white,
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                  
-                  const SizedBox(width: 16),
-                  
-                  // Информация
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          trend['name'],
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          trend['usage'],
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _getTrendColor(trend['trend']),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                trend['trend'],
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Text(
-                              '${trend['percentage']}%',
-                              style: TextStyle(
-                                color: Colors.grey[700],
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
-            );
-          }).toList(),
-        ],
+              
+              const SizedBox(height: 24),
+              
+              // Рекомендации
+              if (provider.colorRecommendations != null && provider.colorRecommendations!.isNotEmpty) ...[
+                _buildRecommendations(provider.colorRecommendations!),
+                const SizedBox(height: 24),
+              ],
+              
+              // Ошибки и загрузка
+              if (provider.recommendationsError != null) ...[
+                _buildErrorCard(provider.recommendationsError!),
+                const SizedBox(height: 24),
+              ],
+              
+              if (provider.isLoadingRecommendations) ...[
+                _buildLoadingCard('Загружаем рекомендации...'),
+                const SizedBox(height: 24),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Вкладка "Тренды"
+  Widget _buildTrendsTab() {
+    return Consumer<AIColorMatcherProvider>(
+      builder: (context, provider, child) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionTitle('Цветовые тренды'),
+              const SizedBox(height: 16),
+              
+              // Фильтры для трендов
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Анализ трендов',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedCategory,
+                              decoration: const InputDecoration(
+                                labelText: 'Категория',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: [
+                                const DropdownMenuItem(value: 'all', child: Text('Все категории')),
+                                const DropdownMenuItem(value: 'dresses', child: Text('Платья')),
+                                const DropdownMenuItem(value: 'tops', child: Text('Топы')),
+                                const DropdownMenuItem(value: 'bottoms', child: Text('Брюки/Юбки')),
+                                const DropdownMenuItem(value: 'accessories', child: Text('Аксессуары')),
+                                const DropdownMenuItem(value: 'shoes', child: Text('Обувь')),
+                              ],
+                              onChanged: (value) {
+                                setState(() => _selectedCategory = value ?? 'all');
+                                provider.setCategory(value ?? 'all');
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedSeason,
+                              decoration: const InputDecoration(
+                                labelText: 'Сезон',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: [
+                                const DropdownMenuItem(value: 'all', child: Text('Все сезоны')),
+                                ...provider._colorMatcherService.getAvailableSeasons().map(
+                                  (season) => DropdownMenuItem(
+                                    value: season,
+                                    child: Text(provider._colorMatcherService.getSeasonName(season)),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                setState(() => _selectedSeason = value ?? 'all');
+                                provider.setSeason(value ?? 'all');
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      ElevatedButton.icon(
+                        onPressed: () => _analyzeTrends(context, provider),
+                        icon: const Icon(Icons.trending_up),
+                        label: const Text('Анализировать тренды'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple[600],
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Тренды
+              if (provider.colorTrends != null && provider.colorTrends!.isNotEmpty) ...[
+                _buildColorTrends(provider.colorTrends!),
+                const SizedBox(height: 24),
+              ],
+              
+              // Ошибки и загрузка
+              if (provider.trendsError != null) ...[
+                _buildErrorCard(provider.trendsError!),
+                const SizedBox(height: 24),
+              ],
+              
+              if (provider.isLoadingTrends) ...[
+                _buildLoadingCard('Анализируем тренды...'),
+                const SizedBox(height: 24),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Вкладка "История"
+  Widget _buildHistoryTab() {
+    return Consumer<AIColorMatcherProvider>(
+      builder: (context, provider, child) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionTitle('История цветовых анализов'),
+              const SizedBox(height: 24),
+              
+              // Статистика
+              if (provider.userColorStats != null) ...[
+                _buildUserStats(provider.userColorStats!),
+                const SizedBox(height: 24),
+              ],
+              
+              // История
+              if (provider.colorHistory != null && provider.colorHistory!.isNotEmpty) ...[
+                _buildColorHistory(provider.colorHistory!),
+                const SizedBox(height: 24),
+              ],
+              
+              // Пользовательские палитры
+              if (provider.userPalettes != null && provider.userPalettes!.isNotEmpty) ...[
+                _buildUserPalettes(provider.userPalettes!),
+                const SizedBox(height: 24),
+              ],
+              
+              // Ошибки и загрузка
+              if (provider.colorHistoryError != null) ...[
+                _buildErrorCard(provider.colorHistoryError!),
+                const SizedBox(height: 24),
+              ],
+              
+              if (provider.isLoadingHistory) ...[
+                _buildLoadingCard('Загружаем историю...'),
+                const SizedBox(height: 24),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Вспомогательные виджеты
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+        color: Colors.purple,
       ),
     );
   }
 
-  Color _parseColor(String hexColor) {
-    hexColor = hexColor.replaceAll('#', '');
-    if (hexColor.length == 6) {
-      hexColor = 'FF$hexColor';
-    }
-    return Color(int.parse(hexColor, radix: 16));
+  Widget _buildColorSwatch(String color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          color: Color(int.parse(color.replaceAll('#', '0xFF'))),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: Center(
+          child: Text(
+            color.replaceAll('#', ''),
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
-  bool _isLightColor(Color color) {
-    final luminance = color.computeLuminance();
-    return luminance > 0.5;
+  Widget _buildAnalysisResults(Map<String, dynamic> analysis) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Результаты анализа',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            
+            // Доминирующие цвета
+            if (analysis['dominantColors'] != null) ...[
+              const Text('Доминирующие цвета:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: (analysis['dominantColors'] as List).map((color) => _buildColorSwatch(
+                  color['color'],
+                  () {},
+                )).toList(),
+              ),
+              const SizedBox(height: 16),
+            ],
+            
+            // Рекомендации
+            if (analysis['recommendations'] != null) ...[
+              const Text('Рекомендации:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              ...(analysis['recommendations'] as List).map((rec) => Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  title: Text(rec['title'] ?? ''),
+                  subtitle: Text(rec['description'] ?? ''),
+                  leading: Icon(
+                    rec['type'] == 'outfit' ? Icons.checkroom : Icons.style,
+                    color: Colors.purple[600],
+                  ),
+                ),
+              )).toList(),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
-  Color _getTrendColor(String trend) {
-    switch (trend) {
-      case 'Восходящий':
-        return Colors.green;
-      case 'Стабильный':
-        return Colors.blue;
-      case 'Нисходящий':
-        return Colors.orange;
-      default:
-        return Colors.grey;
-    }
+  Widget _buildPersonalPalette(List<Map<String, dynamic>> palette) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Ваша персональная палитра',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: palette.map((color) => _buildColorSwatch(
+                color['color'],
+                () {},
+              )).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSeasonalPalettes(Map<String, dynamic> seasonalData) {
+    final palettes = seasonalData['seasonalPalettes'] as Map<String, dynamic>?;
+    if (palettes == null) return const SizedBox.shrink();
+    
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Сезонные палитры',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            
+            ...palettes.entries.map((entry) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${_getSeasonName(entry.key)}:',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: (entry.value as List).map((color) => _buildColorSwatch(
+                    color,
+                    () {},
+                  )).toList(),
+                ),
+                const SizedBox(height: 16),
+              ],
+            )).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHarmoniousColors(List<Map<String, dynamic>> colors) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Гармоничные цвета',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: colors.map((color) => _buildColorSwatch(
+                color['color'],
+                () {},
+              )).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecommendations(List<Map<String, dynamic>> recommendations) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Рекомендации',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            
+            ...recommendations.map((rec) => Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                title: Text(rec['title'] ?? ''),
+                subtitle: Text(rec['description'] ?? ''),
+                leading: Icon(
+                  rec['type'] == 'casual' ? Icons.casual : Icons.business,
+                  color: Colors.purple[600],
+                ),
+              ),
+            )).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildColorTrends(List<Map<String, dynamic>> trends) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Цветовые тренды',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            
+            ...trends.map((trend) => Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                leading: _buildColorSwatch(trend['color'], () {}),
+                title: Text('${trend['category'] ?? ''} - ${trend['trend'] ?? ''}'),
+                subtitle: Text('${trend['percentage'] ?? 0}%'),
+                trailing: Icon(
+                  trend['trend'] == 'rising' ? Icons.trending_up : 
+                  trend['trend'] == 'falling' ? Icons.trending_down : Icons.trending_flat,
+                  color: trend['trend'] == 'rising' ? Colors.green : 
+                         trend['trend'] == 'falling' ? Colors.red : Colors.grey,
+                ),
+              ),
+            )).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserStats(Map<String, dynamic> stats) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Ваша статистика',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    'Анализов',
+                    '${stats['totalAnalyses'] ?? 0}',
+                    Icons.analytics,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildStatCard(
+                    'Любимый цвет',
+                    stats['mostUsed'] ?? 'Нет',
+                    Icons.favorite,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String title, String value, IconData icon) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Icon(icon, size: 32, color: Colors.purple[600]),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildColorHistory(List<Map<String, dynamic>> history) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'История анализов',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            
+            ...history.take(5).map((item) => Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                leading: const Icon(Icons.history, color: Colors.purple),
+                title: Text('Анализ ${item['id'] ?? ''}'),
+                subtitle: Text('${item['createdAt'] ?? ''}'),
+                trailing: const Icon(Icons.arrow_forward_ios),
+              ),
+            )).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserPalettes(List<Map<String, dynamic>> palettes) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Ваши палитры',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            
+            ...palettes.take(3).map((palette) => Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                leading: const Icon(Icons.palette, color: Colors.purple),
+                title: Text(palette['name'] ?? ''),
+                subtitle: Text(palette['description'] ?? ''),
+                trailing: const Icon(Icons.arrow_forward_ios),
+              ),
+            )).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorCard(String error) {
+    return Card(
+      color: Colors.red[50],
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(Icons.error, color: Colors.red[600]),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                error,
+                style: TextStyle(color: Colors.red[800]),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingCard(String message) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(width: 16),
+            Text(message),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Вспомогательные методы
+
+  String _getSeasonName(String season) {
+    final names = {
+      'spring': 'Весна',
+      'summer': 'Лето',
+      'autumn': 'Осень',
+      'winter': 'Зима',
+    };
+    return names[season] ?? season;
+  }
+
+  void _showPhotoOptions(BuildContext context, AIColorMatcherProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Сделать фото'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: Реализовать камеру
+                _mockPhotoAnalysis(provider);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Выбрать из галереи'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: Реализовать галерею
+                _mockPhotoAnalysis(provider);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _mockPhotoAnalysis(AIColorMatcherProvider provider) {
+    provider.analyzePhotoColors(
+      imageUrl: 'https://example.com/mock-photo.jpg',
+      userId: 'user123',
+    );
+  }
+
+  void _generatePersonalPalette(BuildContext context, AIColorMatcherProvider provider) {
+    provider.generatePersonalPalette(
+      userId: 'user123',
+      preferredColors: ['#FF6B6B', '#4ECDC4'],
+      skinTone: 'warm',
+      hairColor: 'brown',
+      eyeColor: 'brown',
+    );
+  }
+
+  void _findHarmoniousColors(BuildContext context, AIColorMatcherProvider provider, String baseColor) {
+    provider.findHarmoniousColors(
+      baseColor: baseColor,
+      harmonyType: _selectedHarmonyType,
+      count: 5,
+    );
+  }
+
+  void _getRecommendations(BuildContext context, AIColorMatcherProvider provider) {
+    provider.getColorRecommendations(
+      userId: 'user123',
+      occasion: _selectedOccasion == 'all' ? null : _selectedOccasion,
+      season: _selectedSeason == 'all' ? null : _selectedSeason,
+    );
+  }
+
+  void _analyzeTrends(BuildContext context, AIColorMatcherProvider provider) {
+    provider.analyzeColorTrends(
+      category: _selectedCategory == 'all' ? null : _selectedCategory,
+      season: _selectedSeason == 'all' ? null : _selectedSeason,
+      limit: 10,
+    );
   }
 }

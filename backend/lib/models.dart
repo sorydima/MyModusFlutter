@@ -432,3 +432,628 @@ class LoyaltyToken {
     );
   }
 }
+
+/// Модель пользовательских предпочтений
+@JsonSerializable()
+class UserPreferences {
+  final String id;
+  final String userId;
+  final Map<String, double> categoryPreferences;
+  final Map<String, double> brandPreferences;
+  final Map<String, int> priceRange; // min, max
+  final Map<String, String> sizePreferences;
+  final List<String> colorPreferences;
+  final List<String> stylePreferences;
+  final Map<String, String> seasonalPreferences;
+  final Map<String, int> shoppingFrequency;
+  final int budgetMonthly;
+  final List<String> preferredMarketplaces;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  UserPreferences({
+    required this.id,
+    required this.userId,
+    required this.categoryPreferences,
+    required this.brandPreferences,
+    required this.priceRange,
+    required this.sizePreferences,
+    required this.colorPreferences,
+    required this.stylePreferences,
+    required this.seasonalPreferences,
+    required this.shoppingFrequency,
+    required this.budgetMonthly,
+    required this.preferredMarketplaces,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory UserPreferences.fromJson(Map<String, dynamic> json) => _$UserPreferencesFromJson(json);
+  Map<String, dynamic> toJson() => _$UserPreferencesToJson(this);
+
+  factory UserPreferences.fromRow(List<dynamic> row) {
+    return UserPreferences(
+      id: row[0].toString(),
+      userId: row[1].toString(),
+      categoryPreferences: Map<String, double>.from(jsonDecode(row[2] as String? ?? '{}')),
+      brandPreferences: Map<String, double>.from(jsonDecode(row[3] as String? ?? '{}')),
+      priceRange: Map<String, int>.from(jsonDecode(row[4] as String? ?? '{"min": 0, "max": 1000000}')),
+      sizePreferences: Map<String, String>.from(jsonDecode(row[5] as String? ?? '{}')),
+      colorPreferences: List<String>.from(row[6] as List? ?? []),
+      stylePreferences: List<String>.from(row[7] as List? ?? []),
+      seasonalPreferences: Map<String, String>.from(jsonDecode(row[8] as String? ?? '{}')),
+      shoppingFrequency: Map<String, int>.from(jsonDecode(row[9] as String? ?? '{}')),
+      budgetMonthly: row[10] as int? ?? 0,
+      preferredMarketplaces: List<String>.from(row[11] as List? ?? []),
+      createdAt: row[12] as DateTime,
+      updatedAt: row[13] as DateTime,
+    );
+  }
+}
+
+/// Модель просмотра товара
+@JsonSerializable()
+class UserProductView {
+  final String id;
+  final String userId;
+  final String productId;
+  final String productTitle;
+  final int productPrice;
+  final String? productCategory;
+  final String? productBrand;
+  final String productSource;
+  final int viewDuration;
+  final bool clickedDetails;
+  final bool addedToWishlist;
+  final DateTime viewedAt;
+
+  UserProductView({
+    required this.id,
+    required this.userId,
+    required this.productId,
+    required this.productTitle,
+    required this.productPrice,
+    this.productCategory,
+    this.productBrand,
+    required this.productSource,
+    required this.viewDuration,
+    required this.clickedDetails,
+    required this.addedToWishlist,
+    required this.viewedAt,
+  });
+
+  factory UserProductView.fromJson(Map<String, dynamic> json) => _$UserProductViewFromJson(json);
+  Map<String, dynamic> toJson() => _$UserProductViewToJson(this);
+
+  factory UserProductView.fromRow(List<dynamic> row) {
+    return UserProductView(
+      id: row[0].toString(),
+      userId: row[1].toString(),
+      productId: row[2].toString(),
+      productTitle: row[3] as String,
+      productPrice: row[4] as int,
+      productCategory: row[5] as String?,
+      productBrand: row[6] as String?,
+      productSource: row[7] as String,
+      viewDuration: row[8] as int,
+      clickedDetails: row[9] as bool,
+      addedToWishlist: row[10] as bool,
+      viewedAt: row[11] as DateTime,
+    );
+  }
+}
+
+/// Модель покупки пользователя
+@JsonSerializable()
+class UserPurchase {
+  final String id;
+  final String userId;
+  final String productId;
+  final String productTitle;
+  final int productPrice;
+  final String? productCategory;
+  final String? productBrand;
+  final String productSource;
+  final int quantity;
+  final int totalAmount;
+  final int? purchaseSatisfaction;
+  final String? purchaseReason;
+  final DateTime purchasedAt;
+
+  UserPurchase({
+    required this.id,
+    required this.userId,
+    required this.productId,
+    required this.productTitle,
+    required this.productPrice,
+    this.productCategory,
+    this.productBrand,
+    required this.productSource,
+    required this.quantity,
+    required this.totalAmount,
+    this.purchaseSatisfaction,
+    this.purchaseReason,
+    required this.purchasedAt,
+  });
+
+  factory UserPurchase.fromJson(Map<String, dynamic> json) => _$UserPurchaseFromJson(json);
+  Map<String, dynamic> toJson() => _$UserPurchaseToJson(this);
+
+  factory UserPurchase.fromRow(List<dynamic> row) {
+    return UserPurchase(
+      id: row[0].toString(),
+      userId: row[1].toString(),
+      productId: row[2].toString(),
+      productTitle: row[3] as String,
+      productPrice: row[4] as int,
+      productCategory: row[5] as String?,
+      productBrand: row[6] as String?,
+      productSource: row[7] as String,
+      quantity: row[8] as int,
+      totalAmount: row[9] as int,
+      purchaseSatisfaction: row[10] as int?,
+      purchaseReason: row[11] as String?,
+      purchasedAt: row[12] as DateTime,
+    );
+  }
+}
+
+/// Модель товара в вишлисте
+@JsonSerializable()
+class UserWishlistItem {
+  final String id;
+  final String userId;
+  final String productId;
+  final String productTitle;
+  final int productPrice;
+  final String? productCategory;
+  final String? productBrand;
+  final String productSource;
+  final String productUrl;
+  final String? productImageUrl;
+  final int priority;
+  final int? priceAlertThreshold;
+  final String? notes;
+  final DateTime addedAt;
+  final DateTime updatedAt;
+
+  UserWishlistItem({
+    required this.id,
+    required this.userId,
+    required this.productId,
+    required this.productTitle,
+    required this.productPrice,
+    this.productCategory,
+    this.productBrand,
+    required this.productSource,
+    required this.productUrl,
+    this.productImageUrl,
+    required this.priority,
+    this.priceAlertThreshold,
+    this.notes,
+    required this.addedAt,
+    required this.updatedAt,
+  });
+
+  factory UserWishlistItem.fromJson(Map<String, dynamic> json) => _$UserWishlistItemFromJson(json);
+  Map<String, dynamic> toJson() => _$UserWishlistItemToJson(this);
+
+  factory UserWishlistItem.fromRow(List<dynamic> row) {
+    return UserWishlistItem(
+      id: row[0].toString(),
+      userId: row[1].toString(),
+      productId: row[2].toString(),
+      productTitle: row[3] as String,
+      productPrice: row[4] as int,
+      productCategory: row[5] as String?,
+      productBrand: row[6] as String?,
+      productSource: row[7] as String,
+      productUrl: row[8] as String,
+      productImageUrl: row[9] as String?,
+      priority: row[10] as int,
+      priceAlertThreshold: row[11] as int?,
+      notes: row[12] as String?,
+      addedAt: row[13] as DateTime,
+      updatedAt: row[14] as DateTime,
+    );
+  }
+}
+
+/// Модель AI-рекомендации
+@JsonSerializable()
+class AIRecommendation {
+  final String id;
+  final String userId;
+  final String productId;
+  final String productTitle;
+  final int productPrice;
+  final String? productCategory;
+  final String? productBrand;
+  final String productSource;
+  final String productUrl;
+  final String? productImageUrl;
+  final double recommendationScore;
+  final List<String> recommendationReasons;
+  final String recommendationType;
+  final bool isViewed;
+  final bool isClicked;
+  final bool isPurchased;
+  final DateTime createdAt;
+  final DateTime? expiresAt;
+
+  AIRecommendation({
+    required this.id,
+    required this.userId,
+    required this.productId,
+    required this.productTitle,
+    required this.productPrice,
+    this.productCategory,
+    this.productBrand,
+    required this.productSource,
+    required this.productUrl,
+    this.productImageUrl,
+    required this.recommendationScore,
+    required this.recommendationReasons,
+    required this.recommendationType,
+    required this.isViewed,
+    required this.isClicked,
+    required this.isPurchased,
+    required this.createdAt,
+    this.expiresAt,
+  });
+
+  factory AIRecommendation.fromJson(Map<String, dynamic> json) => _$AIRecommendationFromJson(json);
+  Map<String, dynamic> toJson() => _$AIRecommendationToJson(this);
+
+  factory AIRecommendation.fromRow(List<dynamic> row) {
+    return AIRecommendation(
+      id: row[0].toString(),
+      userId: row[1].toString(),
+      productId: row[2].toString(),
+      productTitle: row[3] as String,
+      productPrice: row[4] as int,
+      productCategory: row[5] as String?,
+      productBrand: row[6] as String?,
+      productSource: row[7] as String,
+      productUrl: row[8] as String,
+      productImageUrl: row[9] as String?,
+      recommendationScore: (row[10] as num).toDouble(),
+      recommendationReasons: List<String>.from(jsonDecode(row[11] as String? ?? '[]')),
+      recommendationType: row[12] as String,
+      isViewed: row[13] as bool,
+      isClicked: row[14] as bool,
+      isPurchased: row[15] as bool,
+      createdAt: row[16] as DateTime,
+      expiresAt: row[17] as DateTime?,
+    );
+  }
+}
+
+/// Модель анализа пользовательских трендов
+@JsonSerializable()
+class UserTrendAnalysis {
+  final String id;
+  final String userId;
+  final String analysisType;
+  final Map<String, dynamic> analysisData;
+  final double confidenceScore;
+  final DateTime generatedAt;
+  final DateTime? validUntil;
+
+  UserTrendAnalysis({
+    required this.id,
+    required this.userId,
+    required this.analysisType,
+    required this.analysisData,
+    required this.confidenceScore,
+    required this.generatedAt,
+    this.validUntil,
+  });
+
+  factory UserTrendAnalysis.fromJson(Map<String, dynamic> json) => _$UserTrendAnalysisFromJson(json);
+  Map<String, dynamic> toJson() => _$UserTrendAnalysisToJson(this);
+
+  factory UserTrendAnalysis.fromRow(List<dynamic> row) {
+    return UserTrendAnalysis(
+      id: row[0].toString(),
+      userId: row[1].toString(),
+      analysisType: row[2] as String,
+      analysisData: Map<String, dynamic>.from(jsonDecode(row[3] as String)),
+      confidenceScore: (row[4] as num).toDouble(),
+      generatedAt: row[5] as DateTime,
+      validUntil: row[6] as DateTime?,
+    );
+  }
+}
+
+/// Модель профиля лояльности пользователя
+@JsonSerializable()
+class UserLoyaltyProfile {
+  final String id;
+  final String userId;
+  final String? walletAddress;
+  final double loyaltyPoints;
+  final String loyaltyTier;
+  final double totalSpent;
+  final double totalRewardsEarned;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  UserLoyaltyProfile({
+    required this.id,
+    required this.userId,
+    this.walletAddress,
+    required this.loyaltyPoints,
+    required this.loyaltyTier,
+    required this.totalSpent,
+    required this.totalRewardsEarned,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory UserLoyaltyProfile.fromJson(Map<String, dynamic> json) => _$UserLoyaltyProfileFromJson(json);
+  Map<String, dynamic> toJson() => _$UserLoyaltyProfileToJson(this);
+
+  factory UserLoyaltyProfile.fromRow(List<dynamic> row) {
+    return UserLoyaltyProfile(
+      id: row[0].toString(),
+      userId: row[1].toString(),
+      walletAddress: row[2] as String?,
+      loyaltyPoints: (row[3] as num).toDouble(),
+      loyaltyTier: row[4] as String,
+      totalSpent: (row[5] as num).toDouble(),
+      totalRewardsEarned: (row[6] as num).toDouble(),
+      createdAt: row[7] as DateTime,
+      updatedAt: row[8] as DateTime,
+    );
+  }
+}
+
+/// Модель уровня лояльности
+@JsonSerializable()
+class LoyaltyTier {
+  final String id;
+  final String tierName;
+  final int minPoints;
+  final double minSpent;
+  final double rewardMultiplier;
+  final Map<String, dynamic> benefits;
+  final DateTime createdAt;
+
+  LoyaltyTier({
+    required this.id,
+    required this.tierName,
+    required this.minPoints,
+    required this.minSpent,
+    required this.rewardMultiplier,
+    required this.benefits,
+    required this.createdAt,
+  });
+
+  factory LoyaltyTier.fromJson(Map<String, dynamic> json) => _$LoyaltyTierFromJson(json);
+  Map<String, dynamic> toJson() => _$LoyaltyTierToJson(this);
+
+  factory LoyaltyTier.fromRow(List<dynamic> row) {
+    return LoyaltyTier(
+      id: row[0].toString(),
+      tierName: row[1] as String,
+      minPoints: row[2] as int,
+      minSpent: (row[3] as num).toDouble(),
+      rewardMultiplier: (row[4] as num).toDouble(),
+      benefits: Map<String, dynamic>.from(jsonDecode(row[5] as String)),
+      createdAt: row[6] as DateTime,
+    );
+  }
+}
+
+/// Модель транзакции лояльности
+@JsonSerializable()
+class LoyaltyTransaction {
+  final String id;
+  final String userId;
+  final String transactionType;
+  final double pointsAmount;
+  final double? cryptoAmount;
+  final String? description;
+  final Map<String, dynamic>? metadata;
+  final String? blockchainTxHash;
+  final String status;
+  final DateTime createdAt;
+  final DateTime? confirmedAt;
+
+  LoyaltyTransaction({
+    required this.id,
+    required this.userId,
+    required this.transactionType,
+    required this.pointsAmount,
+    this.cryptoAmount,
+    this.description,
+    this.metadata,
+    this.blockchainTxHash,
+    required this.status,
+    required this.createdAt,
+    this.confirmedAt,
+  });
+
+  factory LoyaltyTransaction.fromJson(Map<String, dynamic> json) => _$LoyaltyTransactionFromJson(json);
+  Map<String, dynamic> toJson() => _$LoyaltyTransactionToJson(this);
+
+  factory LoyaltyTransaction.fromRow(List<dynamic> row) {
+    return LoyaltyTransaction(
+      id: row[0].toString(),
+      userId: row[1].toString(),
+      transactionType: row[2] as String,
+      pointsAmount: (row[3] as num).toDouble(),
+      cryptoAmount: row[4] != null ? (row[4] as num).toDouble() : null,
+      description: row[5] as String?,
+      metadata: row[6] != null ? Map<String, dynamic>.from(jsonDecode(row[6] as String)) : null,
+      blockchainTxHash: row[7] as String?,
+      status: row[8] as String,
+      createdAt: row[9] as DateTime,
+      confirmedAt: row[10] as DateTime?,
+    );
+  }
+}
+
+/// Модель крипто-награды
+@JsonSerializable()
+class CryptoReward {
+  final String id;
+  final String rewardType;
+  final int pointsRequired;
+  final double cryptoAmount;
+  final String tokenSymbol;
+  final bool isActive;
+  final int maxDailyClaims;
+  final DateTime createdAt;
+
+  CryptoReward({
+    required this.id,
+    required this.rewardType,
+    required this.pointsRequired,
+    required this.cryptoAmount,
+    required this.tokenSymbol,
+    required this.isActive,
+    required this.maxDailyClaims,
+    required this.createdAt,
+  });
+
+  factory CryptoReward.fromJson(Map<String, dynamic> json) => _$CryptoRewardFromJson(json);
+  Map<String, dynamic> toJson() => _$CryptoRewardToJson(this);
+
+  factory CryptoReward.fromRow(List<dynamic> row) {
+    return CryptoReward(
+      id: row[0].toString(),
+      rewardType: row[1] as String,
+      pointsRequired: row[2] as int,
+      cryptoAmount: (row[3] as num).toDouble(),
+      tokenSymbol: row[4] as String,
+      isActive: row[5] as bool,
+      maxDailyClaims: row[6] as int,
+      createdAt: row[7] as DateTime,
+    );
+  }
+}
+
+/// Модель достижения пользователя
+@JsonSerializable()
+class UserAchievement {
+  final String id;
+  final String userId;
+  final String achievementType;
+  final String achievementName;
+  final String? description;
+  final int pointsRewarded;
+  final double? cryptoRewarded;
+  final DateTime achievedAt;
+  final Map<String, dynamic>? metadata;
+
+  UserAchievement({
+    required this.id,
+    required this.userId,
+    required this.achievementType,
+    required this.achievementName,
+    this.description,
+    required this.pointsRewarded,
+    this.cryptoRewarded,
+    required this.achievedAt,
+    this.metadata,
+  });
+
+  factory UserAchievement.fromJson(Map<String, dynamic> json) => _$UserAchievementFromJson(json);
+  Map<String, dynamic> toJson() => _$UserAchievementToJson(this);
+
+  factory UserAchievement.fromRow(List<dynamic> row) {
+    return UserAchievement(
+      id: row[0].toString(),
+      userId: row[1].toString(),
+      achievementType: row[2] as String,
+      achievementName: row[3] as String,
+      description: row[4] as String?,
+      pointsRewarded: row[5] as int,
+      cryptoRewarded: row[6] != null ? (row[6] as num).toDouble() : null,
+      achievedAt: row[7] as DateTime,
+      metadata: row[8] != null ? Map<String, dynamic>.from(jsonDecode(row[8] as String)) : null,
+    );
+  }
+}
+
+/// Модель реферальной системы
+@JsonSerializable()
+class UserReferral {
+  final String id;
+  final String referrerId;
+  final String referredId;
+  final String referralCode;
+  final String status;
+  final int pointsRewarded;
+  final double cryptoRewarded;
+  final DateTime? completedAt;
+  final DateTime createdAt;
+
+  UserReferral({
+    required this.id,
+    required this.referrerId,
+    required this.referredId,
+    required this.referralCode,
+    required this.status,
+    required this.pointsRewarded,
+    required this.cryptoRewarded,
+    this.completedAt,
+    required this.createdAt,
+  });
+
+  factory UserReferral.fromJson(Map<String, dynamic> json) => _$UserReferralFromJson(json);
+  Map<String, dynamic> toJson() => _$UserReferralToJson(this);
+
+  factory UserReferral.fromRow(List<dynamic> row) {
+    return UserReferral(
+      id: row[0].toString(),
+      referrerId: row[1].toString(),
+      referredId: row[2].toString(),
+      referralCode: row[3] as String,
+      status: row[4] as String,
+      pointsRewarded: row[5] as int,
+      cryptoRewarded: (row[6] as num).toDouble(),
+      completedAt: row[7] as DateTime?,
+      createdAt: row[8] as DateTime,
+    );
+  }
+}
+
+/// Модель ежедневных наград за вход
+@JsonSerializable()
+class DailyLoginReward {
+  final String id;
+  final String userId;
+  final DateTime loginDate;
+  final int pointsEarned;
+  final double? cryptoEarned;
+  final int streakDays;
+  final DateTime createdAt;
+
+  DailyLoginReward({
+    required this.id,
+    required this.userId,
+    required this.loginDate,
+    required this.pointsEarned,
+    this.cryptoEarned,
+    required this.streakDays,
+    required this.createdAt,
+  });
+
+  factory DailyLoginReward.fromJson(Map<String, dynamic> json) => _$DailyLoginRewardFromJson(json);
+  Map<String, dynamic> toJson() => _$DailyLoginRewardToJson(this);
+
+  factory DailyLoginReward.fromRow(List<dynamic> row) {
+    return DailyLoginReward(
+      id: row[0].toString(),
+      userId: row[1].toString(),
+      loginDate: row[2] as DateTime,
+      pointsEarned: row[3] as int,
+      cryptoEarned: row[4] != null ? (row[4] as num).toDouble() : null,
+      streakDays: row[5] as int,
+      createdAt: row[6] as DateTime,
+    );
+  }
+}
