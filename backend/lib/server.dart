@@ -12,11 +12,17 @@ import 'database.dart';
 import 'services/scraping_service.dart';
 import 'services/web3_service.dart';
 import 'services/ai_service.dart';
+import 'services/ai_recommendations_service.dart';
+import 'services/ai_content_generation_service.dart';
+import 'services/ai_style_analysis_service.dart';
+import 'services/ipfs_service.dart';
 import 'handlers/auth_handler.dart';
 import 'handlers/product_handler.dart';
 import 'handlers/social_handler.dart';
 import 'handlers/web3_handler.dart';
 import 'handlers/ai_handler.dart';
+import 'handlers/ai_recommendations_handler.dart';
+import 'handlers/ipfs_handler.dart';
 import 'services/auth_service.dart';
 import 'services/jwt_service.dart';
 
@@ -27,6 +33,10 @@ class MyModusServer {
   late final ScrapingService _scrapingService;
   late final Web3Service _web3Service;
   late final AIService _aiService;
+  late final AIRecommendationsService _aiRecommendationsService;
+  late final AIContentGenerationService _aiContentGenerationService;
+  late final AIStyleAnalysisService _aiStyleAnalysisService;
+  late final IPFSService _ipfsService;
   late final JWTService _jwtService;
   late final AuthService _authService;
   
@@ -36,6 +46,8 @@ class MyModusServer {
   late final SocialHandler _socialHandler;
   late final Web3Handler _web3Handler;
   late final AIHandler _aiHandler;
+  late final AIRecommendationsHandler _aiRecommendationsHandler;
+  late final IPFSHandler _ipfsHandler;
   
   // Configuration
   static const int _port = 8080;
@@ -64,6 +76,15 @@ class MyModusServer {
       _scrapingService = ScrapingService(_database, _redis);
       _web3Service = Web3Service(_database);
       _aiService = AIService(_database, _redis);
+      _aiRecommendationsService = AIRecommendationsService();
+      _aiContentGenerationService = AIContentGenerationService();
+      _aiStyleAnalysisService = AIStyleAnalysisService();
+      
+      // Инициализируем IPFS сервис
+      _ipfsService = IPFSService(
+        ipfsNodeUrl: env['IPFS_NODE_URL'] ?? 'http://localhost:5001',
+        ipfsGatewayUrl: env['IPFS_GATEWAY_URL'] ?? 'http://localhost:8080/ipfs',
+      );
       
       // Инициализируем обработчики
       _authHandler = AuthHandler(_authService, _jwtService);
@@ -71,6 +92,8 @@ class MyModusServer {
       _socialHandler = SocialHandler(_database);
       _web3Handler = Web3Handler(_web3Service, _database);
       _aiHandler = AIHandler(_aiService, _database);
+      _aiRecommendationsHandler = AIRecommendationsHandler();
+      _ipfsHandler = IPFSHandler(ipfsService: _ipfsService);
       
       print('All services initialized successfully');
       
@@ -118,6 +141,12 @@ class MyModusServer {
     
     // AI endpoints
     apiV1.mount('/ai', _aiHandler.router);
+    
+    // AI Recommendations endpoints
+    apiV1.mount('/ai/recommendations', _aiRecommendationsHandler.router);
+    
+    // IPFS endpoints
+    apiV1.mount('/ipfs', _ipfsHandler.router);
     
     // Admin endpoints
     apiV1.get('/admin/stats', (request) => _getAdminStats(request));

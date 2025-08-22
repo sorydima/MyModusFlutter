@@ -1,0 +1,61 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "ipfs_rules.yml"
+
+scrape_configs:
+  # IPFS Node метрики
+  - job_name: 'ipfs-node'
+    static_configs:
+      - targets: ['ipfs-node:5001']
+    metrics_path: /debug/metrics/prometheus
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # IPFS Cluster метрики
+  - job_name: 'ipfs-cluster'
+    static_configs:
+      - targets: ['ipfs-cluster:9094']
+    metrics_path: /metrics
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # IPFS Gateway метрики (Nginx)
+  - job_name: 'ipfs-gateway'
+    static_configs:
+      - targets: ['ipfs-gateway:80']
+    metrics_path: /stats
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    metrics_path: /metrics
+
+  # Prometheus сам по себе
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter (если доступен)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['localhost:9100']
+    scrape_interval: 30s
+
+  # IPFS Pinning Service
+  - job_name: 'ipfs-pinning'
+    static_configs:
+      - targets: ['ipfs-pinning:9094']
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+# Alerting
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - localhost:9093
+
+# Recording rules для IPFS
+rule_files:
+  - "ipfs_recording_rules.yml"

@@ -1,401 +1,425 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
-import 'package:crypto/crypto.dart';
-import '../models/web3_models.dart';
+import 'package:logger/logger.dart';
 
-/// Сервис для интеграции с IPFS
-/// Обрабатывает загрузку, получение и кэширование данных в IPFS
+import '../models/ipfs_models.dart';
+
+/// Flutter сервис для работы с IPFS через backend API
 class IPFSService {
-  // IPFS Gateway URLs для различных провайдеров
-  static const List<String> _ipfsGateways = [
-    'https://ipfs.io/ipfs/',
-    'https://gateway.pinata.cloud/ipfs/',
-    'https://cloudflare-ipfs.com/ipfs/',
-    'https://dweb.link/ipfs/',
-    'https://gateway.ipfs.io/ipfs/',
-  ];
-  
-  // Кэш для IPFS данных
-  final Map<String, dynamic> _cache = {};
-  final Map<String, DateTime> _cacheTimestamps = {};
-  static const Duration _cacheExpiry = Duration(hours: 24);
-  
-  // Текущий активный gateway
-  int _currentGatewayIndex = 0;
-  
-  /// Получить текущий активный gateway
-  String get currentGateway => _ipfsGateways[_currentGatewayIndex];
-  
-  /// Получить список всех доступных gateways
-  List<String> get availableGateways => List.from(_ipfsGateways);
-  
-  /// Переключить на следующий gateway
-  void switchToNextGateway() {
-    _currentGatewayIndex = (_currentGatewayIndex + 1) % _ipfsGateways.length;
-  }
-  
-  /// Переключить на конкретный gateway по индексу
-  void switchToGateway(int index) {
-    if (index >= 0 && index < _ipfsGateways.length) {
-      _currentGatewayIndex = index;
-    }
-  }
-  
-  /// Загрузить файл в IPFS (через Pinata или другой сервис)
-  Future<String?> uploadFile({
+  final String _baseUrl;
+  final http.Client _httpClient;
+  final Logger _logger;
+
+  IPFSService({
+    required String baseUrl,
+    http.Client? httpClient,
+    Logger? logger,
+  }) : _baseUrl = baseUrl,
+       _httpClient = httpClient ?? http.Client(),
+       _logger = logger ?? Logger();
+
+  /// Загрузка файла в IPFS
+  Future<String> uploadFile({
     required Uint8List fileData,
     required String fileName,
-    String? mimeType,
+    String? contentType,
+    Map<String, dynamic>? metadata,
   }) async {
     try {
-      // В реальном приложении здесь будет загрузка через Pinata API
-      // Пока что используем mock загрузку для демонстрации
-      
-      // Генерируем mock IPFS hash на основе содержимого файла
-      final hash = _generateMockIPFSHash(fileData);
-      
-      // Сохраняем в кэш
-      _cache[hash] = {
-        'data': fileData,
-        'fileName': fileName,
-        'mimeType': mimeType ?? 'application/octet-stream',
-        'size': fileData.length,
-        'uploadedAt': DateTime.now().toIso8601String(),
-      };
-      _cacheTimestamps[hash] = DateTime.now();
-      
-      print('File uploaded to IPFS: $hash');
+      _logger.info('Загрузка файла $fileName в IPFS через API...');
+
+      // Создаем multipart request
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_baseUrl/ipfs/upload'),
+      );
+
+      // Добавляем файл
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          fileData,
+          filename: fileName,
+        ),
+      );
+
+      // Добавляем метаданные если есть
+      if (metadata != null) {
+        request.fields['metadata'] = jsonEncode(metadata);
+      }
+
+      final response = await _httpClient.send(request);
+      final responseBody = await response.stream.bytesToString();
+
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка загрузки в IPFS: ${response.statusCode} - $responseBody');
+      }
+
+      final result = jsonDecode(responseBody);
+      final hash = result['hash'] as String;
+
+      _logger.info('Файл $fileName успешно загружен в IPFS: $hash');
       return hash;
-      
     } catch (e) {
-      print('Error uploading file to IPFS: $e');
-      return null;
+      _logger.error('Ошибка загрузки файла в IPFS: $e');
+      rethrow;
     }
   }
-  
-  /// Загрузить JSON метаданные в IPFS
-  Future<String?> uploadMetadata({
+
+  /// Загрузка JSON метаданных в IPFS
+  Future<String> uploadMetadata({
     required Map<String, dynamic> metadata,
     String? fileName,
   }) async {
     try {
-      // Конвертируем метаданные в JSON
-      final jsonString = jsonEncode(metadata);
-      final jsonBytes = utf8.encode(jsonString);
-      
-      // Загружаем JSON как файл
-      return await uploadFile(
-        fileData: Uint8List.fromList(jsonBytes),
-        fileName: fileName ?? 'metadata.json',
-        mimeType: 'application/json',
+      _logger.info('Загрузка метаданных в IPFS через API...');
+
+      final response = await _httpClient.post(
+        Uri.parse('$_baseUrl/ipfs/upload/metadata'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'metadata': metadata,
+          if (fileName != null) 'fileName': fileName,
+        }),
       );
-      
+
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка загрузки метаданных: ${response.statusCode} - ${response.body}');
+      }
+
+      final result = jsonDecode(response.body);
+      final hash = result['hash'] as String;
+
+      _logger.info('Метаданные успешно загружены в IPFS: $hash');
+      return hash;
     } catch (e) {
-      print('Error uploading metadata to IPFS: $fs');
-      return null;
+      _logger.error('Ошибка загрузки метаданных в IPFS: $e');
+      rethrow;
     }
   }
-  
-  /// Загрузить NFT метаданные в IPFS
-  Future<String?> uploadNFTMetadata({
+
+  /// Загрузка NFT метаданных в IPFS
+  Future<String> uploadNFTMetadata({
     required String name,
     required String description,
     required String imageUrl,
-    required String category,
-    required Map<String, String> attributes,
+    required List<NFTAttribute> attributes,
     String? externalUrl,
-    String? animationUrl,
+    Map<String, dynamic>? additionalData,
   }) async {
     try {
-      final metadata = {
-        'name': name,
-        'description': description,
-        'image': imageUrl,
-        'category': category,
-        'attributes': attributes.entries.map((e) => {
-          'trait_type': e.key,
-          'value': e.value,
-        }).toList(),
-        'external_url': externalUrl,
-        'animation_url': animationUrl,
-        'created_at': DateTime.now().toIso8601String(),
-        'version': '1.0.0',
-      };
-      
-      return await uploadMetadata(
-        metadata: metadata,
-        fileName: '${name.replaceAll(' ', '_')}_metadata.json',
+      _logger.info('Загрузка NFT метаданных в IPFS через API...');
+
+      final response = await _httpClient.post(
+        Uri.parse('$_baseUrl/ipfs/upload/nft'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': name,
+          'description': description,
+          'imageUrl': imageUrl,
+          'attributes': attributes.map((attr) => attr.toJson()).toList(),
+          if (externalUrl != null) 'externalUrl': externalUrl,
+          if (additionalData != null) 'additionalData': additionalData,
+        }),
       );
-      
-    } catch (e) {
-      print('Error uploading NFT metadata to IPFS: $e');
-      return null;
-    }
-  }
-  
-  /// Получить файл из IPFS
-  Future<Uint8List?> getFile(String ipfsHash) async {
-    try {
-      // Проверяем кэш
-      if (_cache.containsKey(ipfsHash)) {
-        final cacheEntry = _cache[ipfsHash];
-        final timestamp = _cacheTimestamps[ipfsHash];
-        
-        if (timestamp != null && 
-            DateTime.now().difference(timestamp) < _cacheExpiry) {
-          print('File retrieved from cache: $ipfsHash');
-          return cacheEntry['data'];
-        } else {
-          // Удаляем устаревший кэш
-          _cache.remove(ipfsHash);
-          _cacheTimestamps.remove(ipfsHash);
-        }
+
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка загрузки NFT метаданных: ${response.statusCode} - ${response.body}');
       }
-      
-      // Пытаемся получить файл из IPFS
-      final response = await _fetchFromIPFS(ipfsHash);
-      if (response != null) {
-        // Сохраняем в кэш
-        _cache[ipfsHash] = {
-          'data': response,
-          'fileName': 'unknown',
-          'mimeType': 'application/octet-stream',
-          'size': response.length,
-          'retrievedAt': DateTime.now().toIso8601String(),
-        };
-        _cacheTimestamps[ipfsHash] = DateTime.now();
-        
-        return response;
+
+      final result = jsonDecode(response.body);
+      final hash = result['hash'] as String;
+
+      _logger.info('NFT метаданные успешно загружены в IPFS: $hash');
+      return hash;
+    } catch (e) {
+      _logger.error('Ошибка загрузки NFT метаданных в IPFS: $e');
+      rethrow;
+    }
+  }
+
+  /// Получение файла из IPFS
+  Future<Uint8List> getFile(String hash) async {
+    try {
+      _logger.info('Получение файла из IPFS через API: $hash');
+
+      final response = await _httpClient.get(
+        Uri.parse('$_baseUrl/ipfs/file/$hash'),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка получения файла: ${response.statusCode}');
       }
-      
-      return null;
-      
+
+      _logger.info('Файл успешно получен из IPFS: $hash (${response.bodyBytes.length} байт)');
+      return response.bodyBytes;
     } catch (e) {
-      print('Error getting file from IPFS: $e');
-      return null;
+      _logger.error('Ошибка получения файла из IPFS: $e');
+      rethrow;
     }
   }
-  
-  /// Получить JSON метаданные из IPFS
-  Future<Map<String, dynamic>?> getMetadata(String ipfsHash) async {
+
+  /// Получение JSON метаданных из IPFS
+  Future<Map<String, dynamic>> getMetadata(String hash) async {
     try {
-      final fileData = await getFile(ipfsHash);
-      if (fileData != null) {
-        final jsonString = utf8.decode(fileData);
-        return jsonDecode(jsonString) as Map<String, dynamic>;
+      _logger.info('Получение метаданных из IPFS через API: $hash');
+
+      final response = await _httpClient.get(
+        Uri.parse('$_baseUrl/ipfs/metadata/$hash'),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка получения метаданных: ${response.statusCode}');
       }
-      return null;
+
+      final metadata = jsonDecode(response.body) as Map<String, dynamic>;
+
+      _logger.info('Метаданные успешно получены: $hash');
+      return metadata;
     } catch (e) {
-      print('Error getting metadata from IPFS: $e');
-      return null;
+      _logger.error('Ошибка получения метаданных из IPFS: $e');
+      rethrow;
     }
   }
-  
-  /// Получить NFT метаданные из IPFS
-  Future<NFTMetadata?> getNFTMetadata(String ipfsHash) async {
+
+  /// Получение NFT метаданных из IPFS
+  Future<Map<String, dynamic>> getNFTMetadata(String hash) async {
     try {
-      final metadata = await getMetadata(ipfsHash);
-      if (metadata != null) {
-        return NFTMetadata.fromJson(metadata);
+      _logger.info('Получение NFT метаданных из IPFS через API: $hash');
+
+      final response = await _httpClient.get(
+        Uri.parse('$_baseUrl/ipfs/nft/$hash'),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка получения NFT метаданных: ${response.statusCode}');
       }
-      return null;
+
+      final metadata = jsonDecode(response.body) as Map<String, dynamic>;
+
+      // Валидируем NFT метаданные
+      if (!metadata.containsKey('name') || !metadata.containsKey('image')) {
+        throw Exception('Неверный формат NFT метаданных');
+      }
+
+      _logger.info('NFT метаданные получены: ${metadata['name']}');
+      return metadata;
     } catch (e) {
-      print('Error getting NFT metadata from IPFS: $e');
-      return null;
+      _logger.error('Ошибка получения NFT метаданных из IPFS: $e');
+      rethrow;
     }
   }
-  
-  /// Получить изображение из IPFS
-  Future<Uint8List?> getImage(String ipfsHash) async {
+
+  /// Проверка доступности файла в IPFS
+  Future<bool> isFileAvailable(String hash) async {
     try {
-      return await getFile(ipfsHash);
+      _logger.info('Проверка доступности файла через API: $hash');
+
+      final response = await _httpClient.head(
+        Uri.parse('$_baseUrl/ipfs/file/$hash/status'),
+      );
+
+      final isAvailable = response.statusCode == 200;
+      _logger.info('Файл $hash доступен: $isAvailable');
+
+      return isAvailable;
     } catch (e) {
-      print('Error getting image from IPFS: $e');
-      return null;
-    }
-  }
-  
-  /// Получить URL для IPFS hash
-  String getIPFSURL(String ipfsHash) {
-    if (ipfsHash.startsWith('ipfs://')) {
-      ipfsHash = ipfsHash.replaceFirst('ipfs://', '');
-    }
-    return '$currentGateway$ipfsHash';
-  }
-  
-  /// Получить URL для IPFS hash с конкретным gateway
-  String getIPFSURLWithGateway(String ipfsHash, int gatewayIndex) {
-    if (ipfsHash.startsWith('ipfs://')) {
-      ipfsHash = ipfsHash.replaceFirst('ipfs://', '');
-    }
-    if (gatewayIndex >= 0 && gatewayIndex < _ipfsGateways.length) {
-      return '${_ipfsGateways[gatewayIndex]}$ipfsHash';
-    }
-    return getIPFSURL(ipfsHash);
-  }
-  
-  /// Проверить доступность IPFS gateway
-  Future<bool> isGatewayAvailable(String gateway) async {
-    try {
-      final response = await http.get(
-        Uri.parse('${gateway}QmTest'),
-        headers: {'Accept': 'application/json'},
-      ).timeout(Duration(seconds: 5));
-      
-      // Если получаем ответ (даже ошибку), значит gateway доступен
-      return response.statusCode < 500;
-    } catch (e) {
+      _logger.error('Ошибка проверки доступности файла: $e');
       return false;
     }
   }
-  
-  /// Найти доступный gateway
-  Future<String?> findAvailableGateway() async {
-    for (int i = 0; i < _ipfsGateways.length; i++) {
-      if (await isGatewayAvailable(_ipfsGateways[i])) {
-        _currentGatewayIndex = i;
-        return _ipfsGateways[i];
-      }
-    }
-    return null;
-  }
-  
-  /// Получить статистику кэша
-  Map<String, dynamic> getCacheStats() {
-    return {
-      'totalEntries': _cache.length,
-      'totalSize': _cache.values.fold<int>(0, (sum, entry) => sum + (entry['size'] ?? 0)),
-      'oldestEntry': _cacheTimestamps.values.isNotEmpty 
-          ? _cacheTimestamps.values.reduce((a, b) => a.isBefore(b) ? a : b).toIso8601String()
-          : null,
-      'newestEntry': _cacheTimestamps.values.isNotEmpty 
-          ? _cacheTimestamps.values.reduce((a, b) => a.isAfter(b) ? a : b).toIso8601String()
-          : null,
-      'expiredEntries': _cacheTimestamps.entries
-          .where((entry) => DateTime.now().difference(entry.value) >= _cacheExpiry)
-          .length,
-    };
-  }
-  
-  /// Очистить кэш
-  void clearCache() {
-    _cache.clear();
-    _cacheTimestamps.clear();
-  }
-  
-  /// Очистить устаревшие записи кэша
-  void clearExpiredCache() {
-    final now = DateTime.now();
-    final expiredKeys = _cacheTimestamps.entries
-        .where((entry) => now.difference(entry.value) >= _cacheExpiry)
-        .map((entry) => entry.key)
-        .toList();
-    
-    for (final key in expiredKeys) {
-      _cache.remove(key);
-      _cacheTimestamps.remove(key);
-    }
-    
-    print('Cleared ${expiredKeys.length} expired cache entries');
-  }
-  
-  /// Попытаться получить файл из IPFS через различные gateways
-  Future<Uint8List?> _fetchFromIPFS(String ipfsHash) async {
-    // Пытаемся через текущий gateway
-    try {
-      final response = await http.get(
-        Uri.parse(getIPFSURL(ipfsHash)),
-        headers: {'Accept': '*/*'},
-      ).timeout(Duration(seconds: 10));
-      
-      if (response.statusCode == 200) {
-        return response.bodyBytes;
-      }
-    } catch (e) {
-      print('Error fetching from current gateway: $e');
-    }
-    
-    // Если не получилось, пробуем другие gateways
-    for (int i = 0; i < _ipfsGateways.length; i++) {
-      if (i == _currentGatewayIndex) continue;
-      
-      try {
-        final response = await http.get(
-          Uri.parse('${_ipfsGateways[i]}$ipfsHash'),
-          headers: {'Accept': '*/*'},
-        ).timeout(Duration(seconds: 10));
-        
-        if (response.statusCode == 200) {
-          // Переключаемся на рабочий gateway
-          _currentGatewayIndex = i;
-          print('Switched to working gateway: ${_ipfsGateways[i]}');
-          return response.bodyBytes;
-        }
-      } catch (e) {
-        print('Error fetching from gateway ${_ipfsGateways[i]}: $e');
-      }
-    }
-    
-    return null;
-  }
-  
-  /// Генерировать mock IPFS hash для демонстрации
-  String _generateMockIPFSHash(Uint8List data) {
-    final hash = sha256.convert(data);
-    return 'Qm${hash.toString().substring(0, 44)}';
-  }
-}
 
-/// Модель для NFT метаданных
-class NFTMetadata {
-  final String name;
-  final String description;
-  final String image;
-  final String category;
-  final List<Map<String, dynamic>> attributes;
-  final String? externalUrl;
-  final String? animationUrl;
-  final String createdAt;
-  final String version;
-  
-  NFTMetadata({
-    required this.name,
-    required this.description,
-    required this.image,
-    required this.category,
-    required this.attributes,
-    this.externalUrl,
-    this.animationUrl,
-    required this.createdAt,
-    required this.version,
-  });
-  
-  factory NFTMetadata.fromJson(Map<String, dynamic> json) {
-    return NFTMetadata(
-      name: json['name'] ?? '',
-      description: json['description'] ?? '',
-      image: json['image'] ?? '',
-      category: json['category'] ?? '',
-      attributes: List<Map<String, dynamic>>.from(json['attributes'] ?? []),
-      externalUrl: json['external_url'],
-      animationUrl: json['animation_url'],
-      createdAt: json['created_at'] ?? '',
-      version: json['version'] ?? '1.0.0',
-    );
+  /// Получение информации о файле в IPFS
+  Future<IPFSFileInfo> getFileInfo(String hash) async {
+    try {
+      _logger.info('Получение информации о файле через API: $hash');
+
+      final response = await _httpClient.get(
+        Uri.parse('$_baseUrl/ipfs/file/$hash/info'),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка получения информации о файле: ${response.statusCode}');
+      }
+
+      final fileInfo = IPFSFileInfo.fromJson(jsonDecode(response.body));
+
+      _logger.info('Информация о файле получена: $hash');
+      return fileInfo;
+    } catch (e) {
+      _logger.error('Ошибка получения информации о файле: $e');
+      rethrow;
+    }
   }
-  
-  Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'description': description,
-      'image': image,
-      'category': category,
-      'attributes': attributes,
-      'external_url': externalUrl,
-      'animation_url': animationUrl,
-      'created_at': createdAt,
-      'version': version,
-    };
+
+  /// Закрепление файла в IPFS
+  Future<bool> pinFile(String hash) async {
+    try {
+      _logger.info('Закрепление файла через API: $hash');
+
+      final response = await _httpClient.post(
+        Uri.parse('$_baseUrl/ipfs/pin/$hash'),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка закрепления файла: ${response.statusCode}');
+      }
+
+      final result = jsonDecode(response.body);
+      final isPinned = result['pinned'] as bool;
+
+      _logger.info('Файл $hash закреплен: $isPinned');
+      return isPinned;
+    } catch (e) {
+      _logger.error('Ошибка закрепления файла: $e');
+      return false;
+    }
+  }
+
+  /// Открепление файла в IPFS
+  Future<bool> unpinFile(String hash) async {
+    try {
+      _logger.info('Открепление файла через API: $hash');
+
+      final response = await _httpClient.delete(
+        Uri.parse('$_baseUrl/ipfs/pin/$hash'),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка открепления файла: ${response.statusCode}');
+      }
+
+      final result = jsonDecode(response.body);
+      final isUnpinned = result['unpinned'] as bool;
+
+      _logger.info('Файл $hash откреплен: $isUnpinned');
+      return isUnpinned;
+    } catch (e) {
+      _logger.error('Ошибка открепления файла: $e');
+      return false;
+    }
+  }
+
+  /// Получение списка закрепленных файлов
+  Future<List<String>> getPinnedFiles() async {
+    try {
+      _logger.info('Получение списка закрепленных файлов через API...');
+
+      final response = await _httpClient.get(
+        Uri.parse('$_baseUrl/ipfs/pins'),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка получения списка закрепленных файлов: ${response.statusCode}');
+      }
+
+      final result = jsonDecode(response.body);
+      final pinnedFiles = (result['pinnedFiles'] as List).cast<String>();
+
+      _logger.info('Получено ${pinnedFiles.length} закрепленных файлов');
+      return pinnedFiles;
+    } catch (e) {
+      _logger.error('Ошибка получения списка закрепленных файлов: $e');
+      return [];
+    }
+  }
+
+  /// Получение статистики кэша
+  Map<String, dynamic> getCacheStats() {
+    try {
+      _logger.info('Получение статистики кэша через API...');
+
+      // Для статистики кэша используем синхронный вызов
+      // В реальном приложении это может быть асинхронным
+      return {
+        'totalEntries': 0,
+        'cacheExpiry': 24,
+        'cacheSize': 0,
+      };
+    } catch (e) {
+      _logger.error('Ошибка получения статистики кэша: $e');
+      return {
+        'totalEntries': 0,
+        'cacheExpiry': 24,
+        'cacheSize': 0,
+      };
+    }
+  }
+
+  /// Очистка кэша
+  Future<void> clearCache() async {
+    try {
+      _logger.info('Очистка кэша через API...');
+
+      final response = await _httpClient.delete(
+        Uri.parse('$_baseUrl/ipfs/cache'),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка очистки кэша: ${response.statusCode}');
+      }
+
+      _logger.info('Кэш очищен');
+    } catch (e) {
+      _logger.error('Ошибка очистки кэша: $e');
+      rethrow;
+    }
+  }
+
+  /// Очистка устаревших записей кэша
+  Future<void> cleanExpiredCache() async {
+    try {
+      _logger.info('Очистка устаревших записей кэша через API...');
+
+      final response = await _httpClient.post(
+        Uri.parse('$_baseUrl/ipfs/cache/clean'),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка очистки устаревших записей кэша: ${response.statusCode}');
+      }
+
+      _logger.info('Устаревшие записи кэша очищены');
+    } catch (e) {
+      _logger.error('Ошибка очистки устаревших записей кэша: $e');
+      rethrow;
+    }
+  }
+
+  /// Генерация IPFS хеша для данных
+  String generateHash(Uint8List data) {
+    // В реальном приложении здесь может быть вызов backend API
+    // для генерации IPFS хеша
+    final digest = data.fold<int>(0, (sum, byte) => sum + byte);
+    return 'QmGeneratedHash${digest.toString().padLeft(40, '0')}';
+  }
+
+  /// Проверка валидности IPFS хеша
+  bool isValidHash(String hash) {
+    // IPFS хеши обычно имеют длину 46 символов и начинаются с Qm
+    return hash.length == 46 && hash.startsWith('Qm');
+  }
+
+  /// Получение URL для просмотра файла в IPFS Gateway
+  String getGatewayUrl(String hash) {
+    // Используем backend gateway URL
+    return '$_baseUrl/ipfs/file/$hash';
+  }
+
+  /// Получение URL для IPFS Node API
+  String getNodeUrl() {
+    return _baseUrl;
+  }
+
+  /// Получение URL для IPFS Gateway
+  String getGatewayUrlBase() {
+    return '$_baseUrl/ipfs';
+  }
+
+  /// Закрытие HTTP клиента
+  void dispose() {
+    _httpClient.close();
+    _logger.info('IPFS сервис закрыт');
   }
 }

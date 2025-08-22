@@ -5,6 +5,7 @@ import '../widgets/web3_wallet_card.dart';
 import '../widgets/nft_grid.dart';
 import '../widgets/loyalty_tokens_list.dart';
 import '../widgets/transaction_history.dart';
+import '../widgets/ipfs_nft_dialog.dart';
 import 'web3_demo_screen.dart';
 import 'metamask_ipfs_demo_screen.dart';
 
@@ -46,6 +47,12 @@ class _Web3ScreenState extends State<Web3Screen> {
                     onPressed: () => _navigateToMetaMaskIPFSDemo(context),
                     icon: const Icon(Icons.account_balance_wallet),
                     tooltip: 'MetaMask & IPFS Demo',
+                  ),
+                  // Кнопка создания NFT
+                  IconButton(
+                    onPressed: () => _showCreateNFTDialog(context),
+                    icon: const Icon(Icons.nft),
+                    tooltip: 'Создать NFT',
                   ),
                   if (web3Provider.isConnected)
                     IconButton(
@@ -153,6 +160,13 @@ class _Web3ScreenState extends State<Web3Screen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showCreateNFTDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const IPFSNFTDialog(),
     );
   }
 }

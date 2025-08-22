@@ -39,6 +39,10 @@ class CustomBottomNavigationBar extends StatelessWidget {
           label: 'Web3',
         ),
         BottomNavigationBarItem(
+          icon: Icon(Icons.storage),
+          label: 'IPFS',
+        ),
+        BottomNavigationBarItem(
           icon: Icon(Icons.person),
           label: 'Профиль',
         ),

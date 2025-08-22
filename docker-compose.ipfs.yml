@@ -1,0 +1,130 @@
+version: '3.8'
+
+services:
+  # IPFS Node
+  ipfs-node:
+    image: ipfs/kubo:latest
+    container_name: mymodus-ipfs-node
+    ports:
+      - "4001:4001"      # P2P port
+      - "5001:5001"      # API port
+      - "8080:8080"      # Gateway port
+    volumes:
+      - ipfs-data:/data/ipfs
+      - ipfs-staging:/export
+    environment:
+      - IPFS_PROFILE=server
+      - IPFS_LOGGING=info
+    command: >
+      sh -c "
+        ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '[\"*\"]' &&
+        ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods '[\"PUT\", \"POST\", \"GET\"]' &&
+        ipfs config --json API.HTTPHeaders.Access-Control-Allow-Headers '[\"Authorization\"]' &&
+        ipfs config --json Addresses.Gateway '/ip4/0.0.0.0/tcp/8080' &&
+        ipfs config --json Addresses.API '/ip4/0.0.0.0/tcp/5001' &&
+        ipfs config --json Addresses.Swarm '[\"/ip4/0.0.0.0/tcp/4001\", \"/ip6/::/tcp/4001\"]' &&
+        ipfs daemon --migrate=true --agent-version-suffix=docker
+      "
+    networks:
+      - mymodus-network
+    restart: unless-stopped
+
+  # IPFS Cluster (для управления несколькими узлами)
+  ipfs-cluster:
+    image: ipfs/ipfs-cluster:latest
+    container_name: mymodus-ipfs-cluster
+    ports:
+      - "9094:9094"      # Cluster API
+      - "9095:9095"      # Cluster proxy
+    volumes:
+      - cluster-data:/data/ipfs-cluster
+    environment:
+      - CLUSTER_PEERNAME=mymodus-cluster
+      - CLUSTER_SECRET=your-cluster-secret-here
+      - CLUSTER_IPFSHTTP_NODEMULTIADDRESS=/dns4/ipfs-node/tcp/5001/http
+      - CLUSTER_MONITORPINGINTERVAL=2s
+    depends_on:
+      - ipfs-node
+    networks:
+      - mymodus-network
+    restart: unless-stopped
+
+  # IPFS Gateway (альтернативный)
+  ipfs-gateway:
+    image: nginx:alpine
+    container_name: mymodus-ipfs-gateway
+    ports:
+      - "8081:80"
+    volumes:
+      - ./nginx-ipfs.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - ipfs-node
+    networks:
+      - mymodus-network
+    restart: unless-stopped
+
+  # IPFS Pinning Service (Pinata альтернатива)
+  ipfs-pinning:
+    image: ipfs/ipfs-cluster-ctl:latest
+    container_name: mymodus-ipfs-pinning
+    volumes:
+      - ./pinning-config:/config
+    environment:
+      - CLUSTER_MULTIADDRESS=/dns4/ipfs-cluster/tcp/9094/p2p/your-cluster-peer-id
+    depends_on:
+      - ipfs-cluster
+    networks:
+      - mymodus-network
+    restart: unless-stopped
+
+  # IPFS Monitor (для мониторинга)
+  ipfs-monitor:
+    image: prom/prometheus:latest
+    container_name: mymodus-ipfs-monitor
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - mymodus-network
+    restart: unless-stopped
+
+  # IPFS Dashboard
+  ipfs-dashboard:
+    image: ipfs/ipfs-webui:latest
+    container_name: mymodus-ipfs-dashboard
+    ports:
+      - "5000:5000"
+    environment:
+      - REACT_APP_IPFS_API_URL=http://ipfs-node:5001
+      - REACT_APP_IPFS_GATEWAY_URL=http://ipfs-node:8080
+    depends_on:
+      - ipfs-node
+    networks:
+      - mymodus-network
+    restart: unless-stopped
+
+volumes:
+  ipfs-data:
+    driver: local
+  ipfs-staging:
+    driver: local
+  cluster-data:
+    driver: local
+  prometheus-data:
+    driver: local
+
+networks:
+  mymodus-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

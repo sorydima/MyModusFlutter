@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'app.dart';
 import 'providers/app_provider.dart';
+import 'providers/ipfs_provider.dart';
+import 'services/ipfs_service.dart';
 import 'screens/auth_screen.dart';
 import 'screens/main_app_screen.dart';
 
@@ -20,6 +22,13 @@ class MyModusApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AppProvider()),
+        ChangeNotifierProvider(
+          create: (_) => IPFSProvider(
+            ipfsService: IPFSService(
+              baseUrl: 'http://localhost:3000', // URL вашего backend
+            ),
+          ),
+        ),
       ],
       child: Consumer<AppProvider>(
         builder: (context, appProvider, child) {

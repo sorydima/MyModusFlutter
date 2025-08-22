@@ -8,6 +8,8 @@ import '../widgets/search_screen.dart';
 import '../widgets/chats_list_screen.dart';
 import '../widgets/profile_screen.dart';
 import '../screens/web3_screen.dart';
+import '../screens/ipfs_screen.dart';
+import '../widgets/ipfs_upload_dialog.dart';
 
 class MainAppScreen extends StatefulWidget {
   const MainAppScreen({super.key});
@@ -49,6 +51,7 @@ class _MainAppScreenState extends State<MainAppScreen> {
         appProvider.productProvider.initialize(),
         appProvider.socialProvider.initialize(),
         appProvider.web3Provider.initialize(),
+        // IPFS провайдер уже инициализирован в main.dart
       ]);
       
       setState(() {
@@ -96,6 +99,7 @@ class _MainAppScreenState extends State<MainAppScreen> {
                 SocialFeed(),
                 SearchScreen(),
                 Web3Screen(),
+                IPFSScreen(),
                 ProfileScreen(),
               ],
             )
@@ -122,17 +126,34 @@ class _MainAppScreenState extends State<MainAppScreen> {
   }
 
   Widget? _buildFloatingActionButton() {
-    // Показываем FAB только на социальной ленте
-    if (_currentIndex != 1) return null;
+    // Показываем FAB на социальной ленте и IPFS экране
+    if (_currentIndex == 1) {
+      // FAB для социальной ленты
+      return FloatingActionButton(
+        onPressed: () {
+          // TODO: Навигация к экрану создания поста
+          Navigator.pushNamed(context, '/create-post');
+        },
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        child: const Icon(Icons.add),
+      );
+    } else if (_currentIndex == 4) {
+      // FAB для IPFS экрана
+      return FloatingActionButton(
+        onPressed: () {
+          // Показываем диалог загрузки файлов
+          showDialog(
+            context: context,
+            builder: (context) => const IPFSUploadDialog(),
+          );
+        },
+        backgroundColor: Theme.of(context).colorScheme.secondary,
+        foregroundColor: Theme.of(context).colorScheme.onSecondary,
+        child: const Icon(Icons.upload_file),
+      );
+    }
     
-    return FloatingActionButton(
-      onPressed: () {
-        // TODO: Навигация к экрану создания поста
-        Navigator.pushNamed(context, '/create-post');
-      },
-      backgroundColor: Theme.of(context).colorScheme.primary,
-      foregroundColor: Theme.of(context).colorScheme.onPrimary,
-      child: const Icon(Icons.add),
-    );
+    return null;
   }
 }
