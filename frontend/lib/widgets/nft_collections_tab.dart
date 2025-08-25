@@ -499,3 +499,4 @@ class _NFTCollectionsTabState extends State<NFTCollectionsTab> {
     }
   }
 }
+
