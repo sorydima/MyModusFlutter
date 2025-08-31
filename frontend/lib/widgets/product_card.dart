@@ -48,30 +48,21 @@ class ProductCard extends StatelessWidget {
                     top: Radius.circular(16),
                   ),
                   child: CachedNetworkImage(
-                    imageUrl: product.imageUrl ?? 'https://via.placeholder.com/400x400',
+                    imageUrl: product.imageUrl,
                     height: 200,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    placeholder: (context, url) => Shimmer.fromColors(
-                      baseColor: Colors.grey.shade300,
-                      highlightColor: Colors.grey.shade100,
-                      child: Container(
-                        height: 200,
-                        width: double.infinity,
-                        color: Colors.white,
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      height: 200,
-                      width: double.infinity,
-                      color: Colors.grey.shade300,
-                      child: const Icon(Icons.error, size: 50),
-                    ),
+                    memCacheWidth: 300,
+                    memCacheHeight: 400,
+                    placeholder: (context, url) => _buildImagePlaceholder(),
+                    errorWidget: (context, url, error) => _buildImageError(),
+                    fadeInDuration: const Duration(milliseconds: 300),
+                    fadeOutDuration: const Duration(milliseconds: 300),
                   ),
                 ),
                 
                 // Badge скидки
-                if (product.discount != null && product.discount! > 0)
+                if (product.hasDiscount)
                   Positioned(
                     top: 12,
                     left: 12,
@@ -85,7 +76,7 @@ class ProductCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '-${product.discount}%',
+                        product.formattedDiscount,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
@@ -100,30 +91,15 @@ class ProductCard extends StatelessWidget {
                   top: 12,
                   right: 12,
                   child: Container(
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.9),
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    child: IconButton(
-                      onPressed: () {
-                        // TODO: Добавить/убрать из избранного
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Добавить ${product.title} в избранное'),
-                            duration: const Duration(seconds: 1),
-                          ),
-                        );
-                      },
-                      icon: Icon(
-                        Icons.favorite_border,
-                        size: 20,
-                        color: Colors.grey.shade600,
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 32,
-                        minHeight: 32,
-                      ),
-                      padding: EdgeInsets.zero,
+                    child: const Icon(
+                      Icons.favorite_border,
+                      color: Colors.grey,
+                      size: 20,
                     ),
                   ),
                 ),
@@ -132,29 +108,28 @@ class ProductCard extends StatelessWidget {
             
             // Информация о товаре
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Бренд
-                  if (product.brand != null)
-                    Text(
-                      product.brand!,
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  Text(
+                    product.brand,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w600,
                     ),
+                  ),
                   
-                  // Название товара
                   const SizedBox(height: 4),
+                  
+                  // Название
                   Text(
                     product.title,
                     style: const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      height: 1.2,
+                      fontWeight: FontWeight.bold,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -162,123 +137,130 @@ class ProductCard extends StatelessWidget {
                   
                   const SizedBox(height: 8),
                   
-                  // Цена
-                  Row(
-                    children: [
-                      Text(
-                        '${product.price.toStringAsFixed(0)} ₽',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      
-                      // Старая цена
-                      if (product.oldPrice != null && product.oldPrice! > product.price)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 8),
-                          child: Text(
-                            '${product.oldPrice!.toStringAsFixed(0)} ₽',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade500,
-                              decoration: TextDecoration.lineThrough,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 8),
-                  
                   // Рейтинг и отзывы
                   Row(
                     children: [
-                      // Звезды
-                      Row(
-                        children: List.generate(5, (index) {
-                          final rating = product.rating ?? 0;
-                          final starRating = index < rating.floor() 
-                              ? 1.0 
-                              : (index == rating.floor() ? rating - rating.floor() : 0.0);
-                          
-                          return Icon(
-                            starRating == 1.0 
-                                ? Icons.star 
-                                : starRating > 0 
-                                    ? Icons.star_half 
-                                    : Icons.star_border,
-                            size: 16,
-                            color: starRating > 0 ? Colors.amber : Colors.grey.shade300,
-                          );
-                        }),
+                      Icon(
+                        Icons.star,
+                        size: 16,
+                        color: Colors.amber,
                       ),
-                      
                       const SizedBox(width: 4),
-                      
-                      // Рейтинг
-                      if (product.rating != null)
-                        Text(
-                          '${product.rating!.toStringAsFixed(1)}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      Text(
+                        product.formattedRating,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
-                      
+                      ),
                       const SizedBox(width: 4),
-                      
-                      // Количество отзывов
-                      if (product.reviewCount != null)
-                        Text(
-                          '(${product.reviewCount})',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade500,
-                          ),
+                      Text(
+                        '(${product.formattedReviewCount})',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
                         ),
+                      ),
                     ],
                   ),
                   
                   const SizedBox(height: 12),
                   
-                  // Кнопка добавления в корзину
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // TODO: Добавить в корзину
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${product.title} добавлен в корзину'),
-                            duration: const Duration(seconds: 1),
+                  // Цена
+                  Row(
+                    children: [
+                      Text(
+                        product.formattedPrice,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                      if (product.hasDiscount) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          product.formattedOldPrice,
+                          style: TextStyle(
+                            fontSize: 14,
+                            decoration: TextDecoration.lineThrough,
+                            color: Colors.grey.shade600,
                           ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
                         ),
-                      ),
-                      child: const Text(
-                        'В корзину',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
+                      ],
+                    ],
                   ),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildImagePlaceholder() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: Container(
+        height: 200,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(16),
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.image,
+              size: 50,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Загрузка...',
+              style: TextStyle(
+                color: Colors.grey.shade500,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageError() {
+    return Container(
+      height: 200,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(16),
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.broken_image,
+            size: 50,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Ошибка загрузки',
+            style: TextStyle(
+              color: Colors.grey.shade500,
+              fontSize: 14,
+            ),
+          ),
+        ],
       ),
     );
   }

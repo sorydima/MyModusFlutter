@@ -44,7 +44,7 @@ class IPFSProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      _logger.info('Загрузка файла $fileName в IPFS...');
+      _logger.i('Загрузка файла $fileName в IPFS...');
       
       final hash = await _ipfsService.uploadFile(
         fileData: fileData,
@@ -77,13 +77,13 @@ class IPFSProvider extends ChangeNotifier {
         _pinnedFiles.add(hash);
       }
       
-      _logger.info('Файл $fileName успешно загружен в IPFS: $hash');
+      _logger.i('Файл $fileName успешно загружен в IPFS: $hash');
       notifyListeners();
       
       return result;
     } catch (e) {
       _setError('Ошибка загрузки файла: $e');
-      _logger.error('Ошибка загрузки файла в IPFS: $e');
+      _logger.e('Ошибка загрузки файла в IPFS: $e');
       return null;
     } finally {
       _setLoading(false);
@@ -99,7 +99,7 @@ class IPFSProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      _logger.info('Загрузка метаданных в IPFS...');
+      _logger.i('Загрузка метаданных в IPFS...');
       
       final hash = await _ipfsService.uploadMetadata(
         metadata: metadata,
@@ -128,13 +128,13 @@ class IPFSProvider extends ChangeNotifier {
       await _ipfsService.pinFile(hash);
       _pinnedFiles.add(hash);
       
-      _logger.info('Метаданные успешно загружены в IPFS: $hash');
+      _logger.i('Метаданные успешно загружены в IPFS: $hash');
       notifyListeners();
       
       return result;
     } catch (e) {
       _setError('Ошибка загрузки метаданных: $e');
-      _logger.error('Ошибка загрузки метаданных в IPFS: $e');
+      _logger.e('Ошибка загрузки метаданных в IPFS: $e');
       return null;
     } finally {
       _setLoading(false);
@@ -154,7 +154,7 @@ class IPFSProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      _logger.info('Загрузка NFT метаданных: $name');
+      _logger.i('Загрузка NFT метаданных: $name');
       
       final hash = await _ipfsService.uploadNFTMetadata(
         name: name,
@@ -198,13 +198,13 @@ class IPFSProvider extends ChangeNotifier {
       await _ipfsService.pinFile(hash);
       _pinnedFiles.add(hash);
       
-      _logger.info('NFT метаданные успешно загружены в IPFS: $hash');
+      _logger.i('NFT метаданные успешно загружены в IPFS: $hash');
       notifyListeners();
       
       return result;
     } catch (e) {
       _setError('Ошибка загрузки NFT метаданных: $e');
-      _logger.error('Ошибка загрузки NFT метаданных в IPFS: $e');
+      _logger.e('Ошибка загрузки NFT метаданных в IPFS: $e');
       return null;
     } finally {
       _setLoading(false);
@@ -217,15 +217,15 @@ class IPFSProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      _logger.info('Получение файла из IPFS: $hash');
+      _logger.i('Получение файла из IPFS: $hash');
       
       final fileData = await _ipfsService.getFile(hash);
       
-      _logger.info('Файл успешно получен из IPFS: $hash');
+      _logger.i('Файл успешно получен из IPFS: $hash');
       return fileData;
     } catch (e) {
       _setError('Ошибка получения файла: $e');
-      _logger.error('Ошибка получения файла из IPFS: $e');
+      _logger.e('Ошибка получения файла из IPFS: $e');
       return null;
     } finally {
       _setLoading(false);
@@ -238,15 +238,15 @@ class IPFSProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      _logger.info('Получение метаданных из IPFS: $hash');
+      _logger.i('Получение метаданных из IPFS: $hash');
       
       final metadata = await _ipfsService.getMetadata(hash);
       
-      _logger.info('Метаданные успешно получены: $hash');
+      _logger.i('Метаданные успешно получены: $hash');
       return metadata;
     } catch (e) {
       _setError('Ошибка получения метаданных: $e');
-      _logger.error('Ошибка получения метаданных из IPFS: $e');
+      _logger.e('Ошибка получения метаданных из IPFS: $e');
       return null;
     } finally {
       _setLoading(false);
@@ -259,18 +259,18 @@ class IPFSProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      _logger.info('Получение NFT метаданных: $hash');
+      _logger.i('Получение NFT метаданных: $hash');
       
       final metadata = await _ipfsService.getNFTMetadata(hash);
       
       // Конвертируем в NFTMetadata модель
       final nftMetadata = NFTMetadata.fromJson(metadata);
       
-      _logger.info('NFT метаданные получены: ${nftMetadata.name}');
+      _logger.i('NFT метаданные получены: ${nftMetadata.name}');
       return nftMetadata;
     } catch (e) {
       _setError('Ошибка получения NFT метаданных: $e');
-      _logger.error('Ошибка получения NFT метаданных из IPFS: $e');
+      _logger.e('Ошибка получения NFT метаданных из IPFS: $e');
       return null;
     } finally {
       _setLoading(false);
@@ -284,11 +284,11 @@ class IPFSProvider extends ChangeNotifier {
       
       final isAvailable = await _ipfsService.isFileAvailable(hash);
       
-      _logger.info('Файл $hash доступен: $isAvailable');
+      _logger.i('Файл $hash доступен: $isAvailable');
       return isAvailable;
     } catch (e) {
       _setError('Ошибка проверки доступности файла: $e');
-      _logger.error('Ошибка проверки доступности файла: $e');
+      _logger.e('Ошибка проверки доступности файла: $e');
       return false;
     }
   }
@@ -299,15 +299,15 @@ class IPFSProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      _logger.info('Получение информации о файле: $hash');
+      _logger.i('Получение информации о файле: $hash');
       
       final fileInfo = await _ipfsService.getFileInfo(hash);
       
-      _logger.info('Информация о файле получена: $hash');
+      _logger.i('Информация о файле получена: $hash');
       return fileInfo;
     } catch (e) {
       _setError('Ошибка получения информации о файле: $e');
-      _logger.error('Ошибка получения информации о файле: $e');
+      _logger.e('Ошибка получения информации о файле: $e');
       return null;
     } finally {
       _setLoading(false);
@@ -319,7 +319,7 @@ class IPFSProvider extends ChangeNotifier {
     try {
       _clearError();
       
-      _logger.info('Закрепление файла: $hash');
+      _logger.i('Закрепление файла: $hash');
       
       final isPinned = await _ipfsService.pinFile(hash);
       
@@ -328,11 +328,11 @@ class IPFSProvider extends ChangeNotifier {
         notifyListeners();
       }
       
-      _logger.info('Файл $hash закреплен: $isPinned');
+      _logger.i('Файл $hash закреплен: $isPinned');
       return isPinned;
     } catch (e) {
       _setError('Ошибка закрепления файла: $e');
-      _logger.error('Ошибка закрепления файла: $e');
+      _logger.e('Ошибка закрепления файла: $e');
       return false;
     }
   }
@@ -342,7 +342,7 @@ class IPFSProvider extends ChangeNotifier {
     try {
       _clearError();
       
-      _logger.info('Открепление файла: $hash');
+      _logger.i('Открепление файла: $hash');
       
       final isUnpinned = await _ipfsService.unpinFile(hash);
       
@@ -351,11 +351,11 @@ class IPFSProvider extends ChangeNotifier {
         notifyListeners();
       }
       
-      _logger.info('Файл $hash откреплен: $isUnpinned');
+      _logger.i('Файл $hash откреплен: $isUnpinned');
       return isUnpinned;
     } catch (e) {
       _setError('Ошибка открепления файла: $e');
-      _logger.error('Ошибка открепления файла: $e');
+      _logger.e('Ошибка открепления файла: $e');
       return false;
     }
   }
@@ -366,16 +366,16 @@ class IPFSProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      _logger.info('Обновление списка закрепленных файлов...');
+      _logger.i('Обновление списка закрепленных файлов...');
       
       final pinnedFiles = await _ipfsService.getPinnedFiles();
       _pinnedFiles = pinnedFiles;
       
-      _logger.info('Получено ${pinnedFiles.length} закрепленных файлов');
+      _logger.i('Получено ${pinnedFiles.length} закрепленных файлов');
       notifyListeners();
     } catch (e) {
       _setError('Ошибка обновления списка закрепленных файлов: $e');
-      _logger.error('Ошибка обновления списка закрепленных файлов: $e');
+      _logger.e('Ошибка обновления списка закрепленных файлов: $e');
     } finally {
       _setLoading(false);
     }
@@ -386,16 +386,16 @@ class IPFSProvider extends ChangeNotifier {
     try {
       _clearError();
       
-      _logger.info('Обновление статистики кэша...');
+      _logger.i('Обновление статистики кэша...');
       
       final stats = _ipfsService.getCacheStats();
       _cacheStats = IPFSCacheStats.fromJson(stats);
       
-      _logger.info('Статистика кэша обновлена');
+      _logger.i('Статистика кэша обновлена');
       notifyListeners();
     } catch (e) {
       _setError('Ошибка обновления статистики кэша: $e');
-      _logger.error('Ошибка обновления статистики кэша: $e');
+      _logger.e('Ошибка обновления статистики кэша: $e');
     }
   }
 
@@ -404,18 +404,18 @@ class IPFSProvider extends ChangeNotifier {
     try {
       _clearError();
       
-      _logger.info('Очистка кэша...');
+      _logger.i('Очистка кэша...');
       
       _ipfsService.clearCache();
       
       // Обновляем статистику
       await refreshCacheStats();
       
-      _logger.info('Кэш очищен');
+      _logger.i('Кэш очищен');
       notifyListeners();
     } catch (e) {
       _setError('Ошибка очистки кэша: $e');
-      _logger.error('Ошибка очистки кэша: $e');
+      _logger.e('Ошибка очистки кэша: $e');
     }
   }
 
@@ -424,18 +424,18 @@ class IPFSProvider extends ChangeNotifier {
     try {
       _clearError();
       
-      _logger.info('Очистка устаревших записей кэша...');
+      _logger.i('Очистка устаревших записей кэша...');
       
       _ipfsService.cleanExpiredCache();
       
       // Обновляем статистику
       await refreshCacheStats();
       
-      _logger.info('Устаревшие записи кэша очищены');
+      _logger.i('Устаревшие записи кэша очищены');
       notifyListeners();
     } catch (e) {
       _setError('Ошибка очистки устаревших записей кэша: $e');
-      _logger.error('Ошибка очистки устаревших записей кэша: $e');
+      _logger.e('Ошибка очистки устаревших записей кэша: $e');
     }
   }
 
@@ -541,7 +541,7 @@ class IPFSProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      _logger.info('Инициализация IPFS провайдера...');
+      _logger.i('Инициализация IPFS провайдера...');
       
       // Загружаем закрепленные файлы
       await refreshPinnedFiles();
@@ -549,10 +549,10 @@ class IPFSProvider extends ChangeNotifier {
       // Загружаем статистику кэша
       await refreshCacheStats();
       
-      _logger.info('IPFS провайдер инициализирован');
+      _logger.i('IPFS провайдер инициализирован');
     } catch (e) {
       _setError('Ошибка инициализации IPFS провайдера: $e');
-      _logger.error('Ошибка инициализации IPFS провайдера: $e');
+      _logger.e('Ошибка инициализации IPFS провайдера: $e');
     } finally {
       _setLoading(false);
     }

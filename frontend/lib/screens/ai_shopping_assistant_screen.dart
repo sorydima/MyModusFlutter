@@ -308,7 +308,7 @@ class _AIShoppingAssistantScreenState extends State<AIShoppingAssistantScreen>
                     controller: _budgetController,
                     decoration: const InputDecoration(
                       labelText: 'Budget Range',
-                      hintText: 'e.g., $50-200',
+                      hintText: 'e.g., \$50-200',
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.attach_money),
                     ),
@@ -423,12 +423,12 @@ class _AIShoppingAssistantScreenState extends State<AIShoppingAssistantScreen>
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _buildQuickSearchChip('Work outfits under $100'),
+                      _buildQuickSearchChip('Work outfits under \$100'),
                       _buildQuickSearchChip('Summer dresses'),
                       _buildQuickSearchChip('Comfortable shoes'),
                       _buildQuickSearchChip('Casual blazers'),
                       _buildQuickSearchChip('Weekend looks'),
-                      _buildQuickSearchChip('Accessories under $50'),
+                      _buildQuickSearchChip('Accessories under \$50'),
                     ],
                   ),
                 ],

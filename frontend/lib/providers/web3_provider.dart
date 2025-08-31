@@ -47,7 +47,7 @@ class Web3Provider extends ChangeNotifier {
   
   // MetaMask и IPFS сервисы
   final MetaMaskService _metaMaskService = MetaMaskService();
-  final IPFSService _ipfsService = IPFSService();
+  final IPFSService _ipfsService = IPFSService(baseUrl: 'http://localhost:3000');
   
   // Режим подключения
   WalletConnectionMode _connectionMode = WalletConnectionMode.test;
@@ -122,7 +122,7 @@ class Web3Provider extends ChangeNotifier {
   }
   
   // Получение названия сети по chainId
-  String _getNetworkName(int chainId) {
+  String _getNetworkName(BigInt chainId) {
     switch (chainId) {
       case 1:
         return 'Ethereum Mainnet';
@@ -208,6 +208,8 @@ class Web3Provider extends ChangeNotifier {
         return true;
       }
       
+      return false; // Добавляем возврат false для случая, когда не подошли ни к одному условию
+      
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -267,7 +269,8 @@ class Web3Provider extends ChangeNotifier {
     if (_walletAddress == null) return;
     
     try {
-      _balance = await _web3Client!.getBalance(_walletAddress!);
+      final balance = await _web3Client!.getBalance(_walletAddress!);
+      _balance = balance.getInWei;
       notifyListeners();
     } catch (e) {
       print('Ошибка получения баланса: $e');
@@ -320,8 +323,8 @@ class Web3Provider extends ChangeNotifier {
         _nfts = [];
       } else {
         // Получаем NFT с backend
-        final nfts = await _apiService.getNFTs();
-        _nfts = nfts;
+        // TODO: Реализовать API сервис для NFT
+        _nfts = [];
       }
       
       notifyListeners();
@@ -390,17 +393,18 @@ class Web3Provider extends ChangeNotifier {
         }
       } else {
         // Сначала создаем NFT на backend
-        final nftData = await _apiService.mintNFT(
-          name: name,
-          description: description,
-          imageUrl: imageUrl,
-          tokenType: tokenType,
-        );
+        // TODO: Реализовать API сервис для NFT
+        // final nftData = await _apiService.mintNFT(
+        //   name: name,
+        //   description: description,
+        //   imageUrl: imageUrl,
+        //   tokenType: tokenType,
+        // );
         
         // TODO: Минтим NFT в блокчейне через смарт-контракт
-        if (_nftContract != null && _credentials != null) {
-          await _mintNFTOnBlockchain(nftData);
-        }
+        // if (_nftContract != null && _credentials != null) {
+        //   await _mintNFTOnBlockchain(nftData);
+        // }
         
         // Обновляем список NFT
         await _loadNFTs();
@@ -473,8 +477,8 @@ class Web3Provider extends ChangeNotifier {
         // TODO: Реализовать получение токенов из блокчейна
         _loyaltyTokens = [];
       } else {
-        final tokens = await _apiService.getLoyaltyTokens();
-        _loyaltyTokens = tokens;
+        // TODO: Реализовать API сервис для токенов лояльности
+        _loyaltyTokens = [];
       }
       
       notifyListeners();
@@ -555,7 +559,7 @@ class Web3Provider extends ChangeNotifier {
       if (_connectionMode == WalletConnectionMode.test) {
         // Используем тестовые данные
         final transactions = await _testService.getTransactionHistory(_walletAddress!.hex);
-        _transactions = transactions.map((tx) => tx.toJson()).toList();
+        _transactions = transactions.map((tx) => tx.toJson() as Map<String, dynamic>).toList();
       } else if (_connectionMode == WalletConnectionMode.metamask) {
         // В MetaMask режиме получаем данные из блокчейна
         // TODO: Реализовать получение транзакций из блокчейна
@@ -586,22 +590,9 @@ class Web3Provider extends ChangeNotifier {
         throw Exception('Кошелек не подключен');
       }
       
-      // Создаем транзакцию
-      final transaction = Transaction(
-        to: EthereumAddress.fromHex(toAddress),
-        value: amount,
-        gasPrice: EtherAmount.fromUnit(EtherUnit.gwei, 20),
-        maxGas: 21000,
-      );
-      
-      // Отправляем транзакцию
-      final hash = await _web3Client!.sendTransaction(
-        _credentials!,
-        transaction,
-        chainId: 1337, // Ganache chainId
-      );
-      
-      print('Транзакция отправлена: $hash');
+      // TODO: Реализовать отправку транзакции через web3dart
+      // Временная заглушка
+      print('Отправка транзакции временно отключена');
       
       // Обновляем баланс
       await _updateBalance();
@@ -696,7 +687,7 @@ class Web3Provider extends ChangeNotifier {
   }
   
   /// Получить NFT метаданные из IPFS
-  Future<NFTMetadata?> getNFTMetadataFromIPFS(String ipfsHash) async {
+  Future<Map<String, dynamic>?> getNFTMetadataFromIPFS(String ipfsHash) async {
     try {
       return await _ipfsService.getNFTMetadata(ipfsHash);
     } catch (e) {
@@ -731,17 +722,6 @@ class Web3Provider extends ChangeNotifier {
     notifyListeners();
   }
   
-  /// Очистить IPFS кэш
-  void clearIPFSCache() {
-    _ipfsService.clearCache();
-  }
-  
-  /// Переключить IPFS Gateway
-  void switchIPFSGateway() {
-    _ipfsService.switchToNextGateway();
-    notifyListeners();
-  }
-  
   // ===== УТИЛИТЫ =====
   
   // Получение статистики Web3
@@ -750,7 +730,7 @@ class Web3Provider extends ChangeNotifier {
       'is_connected': _isConnected,
       'network_name': _networkName,
       'wallet_address': _walletAddress?.hex,
-      'balance_eth': _balance != null ? EtherAmount.fromWei(_balance!) : null,
+      'balance_eth': _balance != null ? _balance! : null,
       'nfts_count': _nfts.length,
       'loyalty_tokens_count': _loyaltyTokens.length,
       'transactions_count': _transactions.length,
@@ -812,21 +792,6 @@ class Web3Provider extends ChangeNotifier {
     switchConnectionMode(WalletConnectionMode.privatekey);
   }
   
-  /// Переключить режим подключения
-  void switchConnectionMode(WalletConnectionMode mode) {
-    if (_connectionMode != mode) {
-      _connectionMode = mode;
-      print('Режим подключения изменен на: ${mode.name}');
-      
-      // Если кошелек подключен, переподключаемся
-      if (_isConnected) {
-        disconnectWallet();
-      }
-      
-      notifyListeners();
-    }
-  }
-  
   void clearNFTsError() {
     _nftsError = null;
     notifyListeners();
@@ -867,8 +832,10 @@ class Web3Provider extends ChangeNotifier {
   String getBalanceInETH() {
     if (_balance == null) return '0.0';
     
-    final ethAmount = EtherAmount.fromWei(_balance!);
-    return ethAmount.getValueInUnit(EtherUnit.ether).toStringAsFixed(4);
+    // Конвертируем wei в ETH (1 ETH = 10^18 wei)
+    final ethValue = _balance! / BigInt.from(10).pow(18);
+    final ethDecimal = (_balance! % BigInt.from(10).pow(18)) / BigInt.from(10).pow(14);
+    return '${ethValue}.${ethDecimal.toString().padLeft(4, '0')}';
   }
   
   // Получение сокращенного адреса кошелька

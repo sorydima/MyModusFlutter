@@ -225,7 +225,7 @@ class ProductProvider extends ChangeNotifier {
     return {
       'total_products': totalProducts,
       'categories_count': categoriesCount,
-      'products_by_category': productsByCategory,
+      'products_by_category': productsByCategory.length,
     };
   }
 }

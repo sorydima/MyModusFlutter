@@ -51,7 +51,7 @@ class _Web3ScreenState extends State<Web3Screen> {
                   // Кнопка создания NFT
                   IconButton(
                     onPressed: () => _showCreateNFTDialog(context),
-                    icon: const Icon(Icons.nft),
+                    icon: const Icon(Icons.image),
                     tooltip: 'Создать NFT',
                   ),
                   if (web3Provider.isConnected)

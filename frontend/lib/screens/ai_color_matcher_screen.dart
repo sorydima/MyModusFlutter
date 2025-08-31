@@ -832,7 +832,7 @@ class _AIColorMatcherScreenState extends State<AIColorMatcherScreen>
                 title: Text(rec['title'] ?? ''),
                 subtitle: Text(rec['description'] ?? ''),
                 leading: Icon(
-                  rec['type'] == 'casual' ? Icons.casual : Icons.business,
+                  rec['type'] == 'casual' ? Icons.casual : Icons.business_center,
                   color: Colors.purple[600],
                 ),
               ),

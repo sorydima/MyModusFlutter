@@ -1,6 +1,6 @@
 {
-    "name": "my_modus_frontend",
-    "short_name": "my_modus_frontend",
+      "name": "MyModus",
+  "short_name": "MyModus",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

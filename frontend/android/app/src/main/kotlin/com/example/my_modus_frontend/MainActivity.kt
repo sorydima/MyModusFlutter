@@ -1,4 +1,4 @@
-package com.example.my_modus_frontend
+package com.modus.fashion
 
 import io.flutter.embedding.android.FlutterActivity
 

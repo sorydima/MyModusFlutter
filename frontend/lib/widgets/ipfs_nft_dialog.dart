@@ -51,7 +51,7 @@ class _IPFSNFTDialogState extends State<IPFSNFTDialog> {
             // Заголовок
             Row(
               children: [
-                const Icon(Icons.nft, size: 28, color: Colors.purple),
+                const Icon(Icons.image, size: 28, color: Colors.purple),
                 const SizedBox(width: 12),
                 Text(
                   'Создание NFT метаданных',

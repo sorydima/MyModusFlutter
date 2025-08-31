@@ -55,7 +55,7 @@ class _AdminScreenState extends State<AdminScreen> {
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
-        selectedItemColor: AppTheme.primaryColor,
+        selectedItemColor: Theme.of(context).primaryColor,
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(

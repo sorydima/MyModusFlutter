@@ -1,4 +1,4 @@
-# my_modus_frontend
+# MyModus
 
 A new Flutter project.
 

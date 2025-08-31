@@ -25,7 +25,7 @@ class _AdminPanelState extends State<AdminPanel> {
   void _launch() async {
     final url = _urlCtrl.text.trim();
     if (url.isEmpty) return;
-    setState(()=> _busy = true; _msg = '');
+    setState(()=> _busy = true, _msg = '');
     try {
       final res = await launchScrape(url, _connector);
       setState(()=> _msg = 'Enqueued: ' + (res['job_id']?.toString() ?? 'ok'));
@@ -51,7 +51,11 @@ class _AdminPanelState extends State<AdminPanel> {
             TextField(controller: _urlCtrl, decoration: InputDecoration(labelText: 'Product URL to scrape')),
             SizedBox(height:8),
             Row(children: [
-              Expanded(child: DropdownButtonFormField<String>(value: _connector, items: ['generic','wildberries','ozon','lamoda'].map((e)=>DropdownMenuItem(value:e,child:Text(e))).toList(), onChanged: (v)=> setState(()=> _connector = v ?? 'generic'))),
+              Expanded(child: DropdownButtonFormField<String>(
+                value: _connector, 
+                items: ['generic','wildberries','ozon','lamoda'].map((e)=>DropdownMenuItem(value:e,child:Text(e))).toList(), 
+                onChanged: (v)=> setState(()=> _connector = v ?? 'generic')
+              )),
               SizedBox(width:8),
               ElevatedButton(onPressed: _busy?null:_launch, child: _busy?CircularProgressIndicator():Text('Launch'))
             ]),

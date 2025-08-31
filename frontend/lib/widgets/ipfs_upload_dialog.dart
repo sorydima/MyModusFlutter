@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
+// import 'package:file_picker/file_picker.dart';  // Временно отключаем
 import 'package:drag_and_drop_lists/drag_and_drop_lists.dart';
 
 import '../providers/ipfs_provider.dart';
@@ -394,7 +394,9 @@ class _IPFSUploadDialogState extends State<IPFSUploadDialog> {
 
   /// Выбор документа
   void _pickDocument() async {
-    final result = await FilePicker.platform.pickFiles();
+          // final result = await FilePicker.platform.pickFiles();  // Временно отключаем
+      // TODO: Реализовать выбор файлов без file_picker
+      return;
     
     if (result != null) {
       final file = result.files.first;
@@ -425,22 +427,12 @@ class _IPFSUploadDialogState extends State<IPFSUploadDialog> {
 
   /// Выбор множественных файлов
   void _pickMultipleFiles() async {
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: true,
-      type: FileType.any,
-    );
-    
-    if (result != null) {
-      for (final file in result.files) {
-        if (file.bytes != null) {
-          _addFileToQueue(
-            file.bytes!,
-            file.name,
-            file.extension,
-          );
-        }
-      }
-    }
+          // TODO: Реализовать выбор файлов без file_picker
+      // Временно используем заглушку
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Выбор файлов временно недоступен')),
+      );
+      return;
   }
 
   /// Добавление файла в очередь

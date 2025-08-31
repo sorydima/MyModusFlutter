@@ -263,7 +263,7 @@ class _AIFashionConsultantScreenState extends State<AIFashionConsultantScreen>
                     controller: _budgetController,
                     decoration: const InputDecoration(
                       labelText: 'Budget Range (Optional)',
-                      hintText: 'e.g., $100-300',
+                      hintText: 'e.g., \$100-300',
                       border: OutlineInputBorder(),
                     ),
                   ),

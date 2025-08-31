@@ -119,7 +119,7 @@ class _Web3DemoScreenState extends State<Web3DemoScreen>
                       Row(
                         children: [
                           Icon(
-                            web3Provider.isTestMode ? Icons.test : Icons.public,
+                            web3Provider.isTestMode ? Icons.science : Icons.public,
                             color: web3Provider.isTestMode ? Colors.green : Colors.blue,
                           ),
                           const SizedBox(width: 8),
@@ -164,7 +164,7 @@ class _Web3DemoScreenState extends State<Web3DemoScreen>
                   onPressed: web3Provider.isLoading
                       ? null
                       : () => web3Provider.disconnectWallet(),
-                  icon: const Icon(Icons.disconnect),
+                  icon: const Icon(Icons.link_off),
                   label: const Text('Отключить кошелек'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,

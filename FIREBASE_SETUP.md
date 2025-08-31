@@ -2,7 +2,7 @@
 # Firebase setup — quick guide
 
 1. Go to https://console.firebase.google.com/ and create a new project (My Modus).
-2. Add Android app: provide package name (e.g. com.example.mymodus). Download `google-services.json`.
+2. Add Android app: provide package name (e.g. com.modus.fashion). Download `google-services.json`.
 3. Add iOS app: provide bundle id, download `GoogleService-Info.plist`.
 4. Place `google-services.json` into `frontend/android/app/` and `GoogleService-Info.plist` into `frontend/ios/Runner/`.
 5. Add Firebase SDKs:

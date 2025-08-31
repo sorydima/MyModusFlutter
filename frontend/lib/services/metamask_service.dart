@@ -4,6 +4,21 @@ import 'package:flutter/foundation.dart';
 import 'package:web3dart/web3dart.dart';
 import '../models/web3_models.dart';
 
+// Временный класс WalletInfo для совместимости
+class WalletInfo {
+  final String address;
+  final String balance;
+  final String network;
+  final bool isConnected;
+
+  WalletInfo({
+    required this.address,
+    required this.balance,
+    required this.network,
+    required this.isConnected,
+  });
+}
+
 /// Сервис для интеграции с MetaMask кошельком
 /// Обрабатывает подключение, события и взаимодействие с кошельком
 class MetaMaskService {
@@ -95,10 +110,10 @@ class MetaMaskService {
       // Создаем информацию о кошельке
       final walletInfo = WalletInfo(
         address: address,
-        balance: await _getBalance(address),
+        balance: await getBalance(address),
         network: network.name,
         isConnected: true,
-        canSign: true,
+
       );
       
       // Отправляем событие подключения
@@ -138,7 +153,8 @@ class MetaMaskService {
         chainId: 11155111,
         rpcUrl: 'https://sepolia.infura.io/v3/YOUR_INFURA_PROJECT_ID',
         explorerUrl: 'https://sepolia.etherscan.io',
-        currencySymbol: 'ETH',
+        nativeCurrency: 'ETH',
+        decimals: 18,
         isTestnet: true,
       );
     } catch (e) {
@@ -148,14 +164,15 @@ class MetaMaskService {
         chainId: 0,
         rpcUrl: '',
         explorerUrl: '',
-        currencySymbol: 'ETH',
+        nativeCurrency: 'ETH',
+        decimals: 18,
         isTestnet: false,
       );
     }
   }
   
   /// Получить баланс кошелька
-  Future<String> _getBalance(String address) async {
+  Future<String> getBalance(String address) async {
     try {
       // В реальном приложении получаем баланс через RPC
       await Future.delayed(Duration(milliseconds: 300));
@@ -163,6 +180,70 @@ class MetaMaskService {
     } catch (e) {
       print('Error getting balance: $e');
       return '0.0';
+    }
+  }
+
+  /// Получить историю транзакций
+  Future<List<TransactionModel>> getTransactionHistory(String address) async {
+    try {
+      // В реальном приложении получаем транзакции через RPC
+      await Future.delayed(Duration(milliseconds: 500));
+      
+      // Mock транзакции для демонстрации
+      return [
+        TransactionModel(
+          hash: '0x1234...5678',
+          from: address,
+          to: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
+          value: '0.1',
+          gasUsed: '21000',
+          gasPrice: '20000000000',
+          blockNumber: 12345678,
+          timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+          status: TransactionStatus.confirmed,
+          type: TransactionType.transfer,
+          network: 'Ethereum Mainnet',
+        ),
+        TransactionModel(
+          hash: '0x8765...4321',
+          from: address,
+          to: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
+          value: '0.05',
+          gasUsed: '65000',
+          gasPrice: '25000000000',
+          blockNumber: 12345677,
+          timestamp: DateTime.now().subtract(const Duration(days: 1)),
+          status: TransactionStatus.confirmed,
+          type: TransactionType.swap,
+          network: 'Ethereum Mainnet',
+        ),
+      ];
+    } catch (e) {
+      print('Error getting transaction history: $e');
+      return [];
+    }
+  }
+
+  /// Отправить транзакцию
+  Future<String?> sendTransaction({
+    required String from,
+    required String to,
+    required String value,
+    String? data,
+  }) async {
+    try {
+      if (!_isConnected) {
+        throw Exception('Кошелек не подключен');
+      }
+      
+      // В реальном приложении отправляем транзакцию через RPC
+      await Future.delayed(Duration(seconds: 3));
+      
+      // Возвращаем mock хеш транзакции
+      return '0x${DateTime.now().millisecondsSinceEpoch.toRadixString(16).padLeft(64, '0')}';
+    } catch (e) {
+      print('Error sending transaction: $e');
+      return null;
     }
   }
   
@@ -198,7 +279,8 @@ class MetaMaskService {
         chainId: 80001,
         rpcUrl: 'https://polygon-mumbai.infura.io/v3/YOUR_INFURA_PROJECT_ID',
         explorerUrl: 'https://mumbai.polygonscan.com',
-        currencySymbol: 'MATIC',
+        nativeCurrency: 'MATIC',
+        decimals: 18,
         isTestnet: true,
       );
       
@@ -328,7 +410,8 @@ class MetaMaskService {
           chainId: 1,
           rpcUrl: 'https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID',
           explorerUrl: 'https://etherscan.io',
-          currencySymbol: 'ETH',
+          nativeCurrency: 'ETH',
+          decimals: 18,
           isTestnet: false,
         );
       case 11155111:
@@ -337,7 +420,8 @@ class MetaMaskService {
           chainId: 11155111,
           rpcUrl: 'https://sepolia.infura.io/v3/YOUR_INFURA_PROJECT_ID',
           explorerUrl: 'https://sepolia.etherscan.io',
-          currencySymbol: 'ETH',
+          nativeCurrency: 'ETH',
+          decimals: 18,
           isTestnet: true,
         );
       case 80001:
@@ -346,7 +430,8 @@ class MetaMaskService {
           chainId: 80001,
           rpcUrl: 'https://polygon-mumbai.infura.io/v3/YOUR_INFURA_PROJECT_ID',
           explorerUrl: 'https://mumbai.polygonscan.com',
-          currencySymbol: 'MATIC',
+          nativeCurrency: 'MATIC',
+          decimals: 18,
           isTestnet: true,
         );
       case 137:
@@ -355,7 +440,8 @@ class MetaMaskService {
           chainId: 137,
           rpcUrl: 'https://polygon-rpc.com',
           explorerUrl: 'https://polygonscan.com',
-          currencySymbol: 'MATIC',
+          nativeCurrency: 'MATIC',
+          decimals: 18,
           isTestnet: false,
         );
       default:
@@ -371,7 +457,8 @@ class MetaMaskService {
         chainId: 1,
         rpcUrl: 'https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID',
         explorerUrl: 'https://etherscan.io',
-        currencySymbol: 'ETH',
+        nativeCurrency: 'ETH',
+        decimals: 18,
         isTestnet: false,
       ),
       NetworkInfo(
@@ -379,7 +466,8 @@ class MetaMaskService {
         chainId: 11155111,
         rpcUrl: 'https://sepolia.infura.io/v3/YOUR_INFURA_PROJECT_ID',
         explorerUrl: 'https://sepolia.etherscan.io',
-        currencySymbol: 'ETH',
+        nativeCurrency: 'ETH',
+        decimals: 18,
         isTestnet: true,
       ),
       NetworkInfo(
@@ -387,7 +475,8 @@ class MetaMaskService {
         chainId: 80001,
         rpcUrl: 'https://polygon-mumbai.infura.io/v3/YOUR_INFURA_PROJECT_ID',
         explorerUrl: 'https://mumbai.polygonscan.com',
-        currencySymbol: 'MATIC',
+        nativeCurrency: 'MATIC',
+        decimals: 18,
         isTestnet: true,
       ),
       NetworkInfo(
@@ -395,7 +484,8 @@ class MetaMaskService {
         chainId: 137,
         rpcUrl: 'https://polygon-rpc.com',
         explorerUrl: 'https://polygonscan.com',
-        currencySymbol: 'MATIC',
+        nativeCurrency: 'MATIC',
+        decimals: 18,
         isTestnet: false,
       ),
     ];

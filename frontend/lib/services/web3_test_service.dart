@@ -2,6 +2,71 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/web3_models.dart';
 
+// Временные типы для совместимости
+enum TransactionStatus { pending, confirmed, failed }
+enum TransactionType { transfer, mint, burn, swap, stake, unstake }
+
+class BlockchainTransactionModel {
+  final String hash;
+  final String from;
+  final String to;
+  final String value;
+  final String gasUsed;
+  final String gasPrice;
+  final int blockNumber;
+  final DateTime timestamp;
+  final TransactionStatus status;
+  final TransactionType type;
+  final String? error;
+  final String network;
+
+  BlockchainTransactionModel({
+    required this.hash,
+    required this.from,
+    required this.to,
+    required this.value,
+    required this.gasUsed,
+    required this.gasPrice,
+    required this.blockNumber,
+    required this.timestamp,
+    required this.status,
+    required this.type,
+    this.error,
+    required this.network,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'hash': hash,
+      'from': from,
+      'to': to,
+      'value': value,
+      'gasUsed': gasUsed,
+      'gasPrice': gasPrice,
+      'blockNumber': blockNumber,
+      'status': status.name,
+      'type': type.name,
+      'timestamp': timestamp.toIso8601String(),
+      'error': error,
+      'network': network,
+    };
+  }
+}
+
+class WalletInfo {
+  final String address;
+  final String balance;
+  final String network;
+  final bool isConnected;
+
+  WalletInfo({
+    required this.address,
+    required this.balance,
+    required this.network,
+    required this.isConnected,
+  });
+}
+
 /// Тестовый сервис для Web3 интеграции
 /// Использует mock данные для разработки и тестирования
 class Web3TestService {
@@ -11,126 +76,118 @@ class Web3TestService {
   static final List<NFTModel> _mockNFTs = [
     NFTModel(
       id: '1',
-      name: 'MyModus Fashion NFT #1',
-      description: 'Эксклюзивный NFT из коллекции MyModus',
-      imageUrl: 'https://via.placeholder.com/300x300/FF6B6B/FFFFFF?text=NFT+1',
-      tokenId: '1',
+      tokenId: 1,
       contractAddress: '0x1234567890123456789012345678901234567890',
       owner: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
-      price: '0.1',
+      metadata: NFTMetadata(
+        name: 'NFT #1',
+        description: 'Описание NFT #1',
+        image: 'https://via.placeholder.com/300x300/FF6B6B/FFFFFF?text=NFT+1',
+        attributes: 'fashion',
+      ),
       isForSale: true,
-      creator: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
+      price: 0.1,
       createdAt: DateTime.now().subtract(Duration(days: 1)),
-      category: 'Fashion',
-      attributes: {
-        'rarity': 'Common',
-        'style': 'Casual',
-        'season': 'All Year'
-      },
+      updatedAt: DateTime.now().subtract(Duration(days: 1)),
+      viewCount: 10,
+      likeCount: 5,
+      rarity: 0.8,
     ),
     NFTModel(
       id: '2',
-      name: 'MyModus Luxury NFT #2',
-      description: 'Премиум NFT с уникальными характеристиками',
-      imageUrl: 'https://via.placeholder.com/300x300/4ECDC4/FFFFFF?text=NFT+2',
-      tokenId: '2',
+      tokenId: 2,
       contractAddress: '0x1234567890123456789012345678901234567890',
       owner: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
-      price: '0.5',
+      metadata: NFTMetadata(
+        name: 'NFT #2',
+        description: 'Описание NFT #2',
+        image: 'https://via.placeholder.com/300x300/4ECDC4/FFFFFF?text=NFT+2',
+        attributes: 'sneakers',
+      ),
       isForSale: true,
-      creator: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
+      price: 0.5,
       createdAt: DateTime.now().subtract(Duration(hours: 12)),
-      category: 'Luxury',
-      attributes: {
-        'rarity': 'Rare',
-        'style': 'Premium',
-        'season': 'Spring'
-      },
+      updatedAt: DateTime.now().subtract(Duration(hours: 12)),
+      viewCount: 15,
+      likeCount: 8,
+      rarity: 0.7,
     ),
     NFTModel(
       id: '3',
-      name: 'MyModus Streetwear NFT #3',
-      description: 'Уличная мода в стиле MyModus',
-      imageUrl: 'https://via.placeholder.com/300x300/45B7D1/FFFFFF?text=NFT+3',
-      tokenId: '3',
+      tokenId: 3,
       contractAddress: '0x1234567890123456789012345678901234567890',
       owner: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
-      price: '0.3',
+      metadata: NFTMetadata(
+        name: 'NFT #3',
+        description: 'Описание NFT #3',
+        image: 'https://via.placeholder.com/300x300/45B7D1/FFFFFF?text=NFT+3',
+        attributes: 'luxury',
+      ),
       isForSale: false,
-      creator: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
+      price: 0.3,
       createdAt: DateTime.now().subtract(Duration(hours: 6)),
-      category: 'Streetwear',
-      attributes: {
-        'rarity': 'Uncommon',
-        'style': 'Urban',
-        'season': 'Summer'
-      },
+      updatedAt: DateTime.now().subtract(Duration(hours: 6)),
+      viewCount: 8,
+      likeCount: 3,
+      rarity: 0.6,
     ),
   ];
 
   static final List<LoyaltyTokenModel> _mockLoyaltyTokens = [
     LoyaltyTokenModel(
       id: '1',
-      name: 'MyModus Loyalty Token',
       symbol: 'MMLT',
-      balance: '1000.0',
+      name: 'MyModus Loyalty Token',
       decimals: 18,
-      contractAddress: '0x0987654321098765432109876543210987654321',
       totalSupply: '1000000.0',
-      userBalance: '1000.0',
-      canMint: true,
-      canBurn: false,
+      maxSupply: '1000000.0',
       mintPrice: '0.001',
+      mintingEnabled: true,
+      burningEnabled: false,
+      paused: false,
+      createdAt: DateTime.now().subtract(Duration(days: 30)),
     ),
     LoyaltyTokenModel(
       id: '2',
-      name: 'MyModus Premium Token',
       symbol: 'MMPT',
-      balance: '500.0',
+      name: 'MyModus Premium Token',
       decimals: 18,
-      contractAddress: '0x0987654321098765432109876543210987654321',
       totalSupply: '100000.0',
-      userBalance: '500.0',
-      canMint: true,
-      canBurn: true,
+      maxSupply: '100000.0',
       mintPrice: '0.01',
+      mintingEnabled: true,
+      burningEnabled: true,
+      paused: false,
+      createdAt: DateTime.now().subtract(Duration(days: 15)),
     ),
   ];
 
   static final List<BlockchainTransactionModel> _mockTransactions = [
     BlockchainTransactionModel(
-      id: '1',
       hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
       from: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
       to: '0x1234567890123456789012345678901234567890',
       value: '0.1',
       gasUsed: '21000',
       gasPrice: '20000000000',
+      blockNumber: 12345678,
       status: TransactionStatus.confirmed,
-      blockNumber: '12345678',
+      type: TransactionType.mint,
       timestamp: DateTime.now().subtract(Duration(hours: 2)),
-      type: TransactionType.nftMint,
-      metadata: {
-        'tokenId': '1',
-        'contractAddress': '0x1234567890123456789012345678901234567890'
-      },
+      network: 'Ethereum',
     ),
     BlockchainTransactionModel(
-      id: '2',
       hash: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
       from: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
       to: '0x0987654321098765432109876543210987654321',
       value: '0.001',
       gasUsed: '65000',
       gasPrice: '20000000000',
+      blockNumber: 12345679,
       status: TransactionStatus.confirmed,
-      blockNumber: '12345679',
+      type: TransactionType.mint,
       timestamp: DateTime.now().subtract(Duration(hours: 1)),
-      type: TransactionType.tokenMint,
-      metadata: {
-        'amount': '100',
-        'contractAddress': '0x0987654321098765432109876543210987654321'
-      },
+      network: 'Ethereum',
     ),
   ];
 
@@ -240,7 +297,8 @@ class Web3TestService {
         chainId: 11155111,
         rpcUrl: 'https://sepolia.infura.io/v3/YOUR_INFURA_PROJECT_ID',
         explorerUrl: 'https://sepolia.etherscan.io',
-        currencySymbol: 'ETH',
+        nativeCurrency: 'ETH',
+        decimals: 18,
         isTestnet: true,
       );
     } catch (e) {
@@ -250,7 +308,8 @@ class Web3TestService {
         chainId: 0,
         rpcUrl: '',
         explorerUrl: '',
-        currencySymbol: 'ETH',
+        nativeCurrency: 'ETH',
+        decimals: 18,
         isTestnet: false,
       );
     }
@@ -266,7 +325,7 @@ class Web3TestService {
         balance: '2.5',
         network: 'Sepolia Testnet',
         isConnected: true,
-        canSign: true,
+
       );
     } catch (e) {
       print('Error connecting wallet: $e');

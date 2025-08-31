@@ -316,8 +316,8 @@ class SocialProvider extends ChangeNotifier {
   Map<String, dynamic> getSocialStats() {
     final totalPosts = _posts.length;
     final totalChats = _chats.length;
-    final totalLikes = _posts.fold<int>(0, (sum, post) => sum + (post['likes_count'] ?? 0));
-    final totalComments = _posts.fold<int>(0, (sum, post) => sum + (post['comments_count'] ?? 0));
+    final totalLikes = _posts.fold<int>(0, (sum, post) => sum + ((post['likes_count'] ?? 0) as int));
+    final totalComments = _posts.fold<int>(0, (sum, post) => sum + ((post['comments_count'] ?? 0) as int));
     
     return {
       'total_posts': totalPosts,

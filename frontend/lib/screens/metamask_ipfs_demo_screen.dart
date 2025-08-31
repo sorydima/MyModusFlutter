@@ -207,7 +207,7 @@ class _MetaMaskIPFSDemoScreenState extends State<MetaMaskIPFSDemoScreen>
                                 onPressed: web3Provider.isLoading
                                     ? null
                                     : () => web3Provider.disconnectWallet(),
-                                icon: const Icon(Icons.disconnect),
+                                icon: const Icon(Icons.link_off),
                                 label: const Text('Отключить кошелек'),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.red,
@@ -574,7 +574,7 @@ class _MetaMaskIPFSDemoScreenState extends State<MetaMaskIPFSDemoScreen>
   IconData _getConnectionModeIcon(WalletConnectionMode mode) {
     switch (mode) {
       case WalletConnectionMode.test:
-        return Icons.test;
+        return Icons.science;
       case WalletConnectionMode.metamask:
         return Icons.account_balance_wallet;
       case WalletConnectionMode.walletconnect:

@@ -44,7 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
           msg: 'Login successful!',
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
-          backgroundColor: AppTheme.primaryColor,
+          backgroundColor: Theme.of(context).primaryColor,
           textColor: Colors.white,
         );
 
@@ -97,13 +97,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: 120,
                   height: 120,
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: Theme.of(context).primaryColor.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     Icons.shopping_bag,
                     size: 60,
-                    color: AppTheme.primaryColor,
+                    color: Theme.of(context).primaryColor,
                   ),
                 ),
                 
@@ -148,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppTheme.primaryColor),
+                      borderSide: BorderSide(color: Theme.of(context).primaryColor),
                     ),
                   ),
                   validator: (value) {
@@ -181,7 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppTheme.primaryColor),
+                      borderSide: BorderSide(color: Theme.of(context).primaryColor),
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -214,7 +214,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
+                      backgroundColor: Theme.of(context).primaryColor,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -255,7 +255,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Text(
                       'Forgot Password?',
                       style: TextStyle(
-                        color: AppTheme.primaryColor,
+                        color: Theme.of(context).primaryColor,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -358,7 +358,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Text(
                         'Sign Up',
                         style: TextStyle(
-                          color: AppTheme.primaryColor,
+                          color: Theme.of(context).primaryColor,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

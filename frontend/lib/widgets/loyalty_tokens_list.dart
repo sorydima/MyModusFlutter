@@ -308,7 +308,7 @@ class _TokenCard extends StatelessWidget {
                       _TokenDetail(
                         label: 'Всего',
                         value: '${token['total_supply'] ?? 0}',
-                        icon: Icons.supply,
+                        icon: Icons.token,
                       ),
                       const SizedBox(width: 16),
                       _TokenDetail(

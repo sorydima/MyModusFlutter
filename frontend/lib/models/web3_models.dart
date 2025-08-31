@@ -15,14 +15,12 @@ class NFTMetadata {
   final String name;
   final String description;
   final String image;
-  final String externalUrl;
   final String attributes;
 
   NFTMetadata({
     required this.name,
     required this.description,
     required this.image,
-    required this.externalUrl,
     required this.attributes,
   });
 
@@ -33,27 +31,31 @@ class NFTMetadata {
 @JsonSerializable()
 class NFTModel {
   final String id;
-  final String tokenId;
+  final int tokenId;
+  final String contractAddress;
   final String owner;
-  final String creator;
-  final String tokenURI;
   final NFTMetadata? metadata;
+  final double? price;
   final bool isForSale;
-  final String? price;
   final DateTime createdAt;
-  final DateTime? updatedAt;
+  final DateTime updatedAt;
+  final int viewCount;
+  final int likeCount;
+  final double rarity;
 
   NFTModel({
     required this.id,
     required this.tokenId,
+    required this.contractAddress,
     required this.owner,
-    required this.creator,
-    required this.tokenURI,
     this.metadata,
-    this.isForSale = false,
     this.price,
+    this.isForSale = false,
     required this.createdAt,
-    this.updatedAt,
+    required this.updatedAt,
+    this.viewCount = 0,
+    this.likeCount = 0,
+    this.rarity = 0.0,
   });
 
   factory NFTModel.fromJson(Map<String, dynamic> json) => _$NFTModelFromJson(json);
@@ -276,4 +278,54 @@ class TransferRequest {
 
   factory TransferRequest.fromJson(Map<String, dynamic> json) => _$TransferRequestFromJson(json);
   Map<String, dynamic> toJson() => _$TransferRequestToJson(this);
+}
+
+@JsonSerializable()
+class TransactionModel {
+  final String hash;
+  final String from;
+  final String to;
+  final String value;
+  final String gasUsed;
+  final String gasPrice;
+  final int blockNumber;
+  final DateTime timestamp;
+  final TransactionStatus status;
+  final TransactionType type;
+  final String? error;
+  final String network;
+
+  TransactionModel({
+    required this.hash,
+    required this.from,
+    required this.to,
+    required this.value,
+    required this.gasUsed,
+    required this.gasPrice,
+    required this.blockNumber,
+    required this.timestamp,
+    required this.status,
+    required this.type,
+    this.error,
+    required this.network,
+  });
+
+  factory TransactionModel.fromJson(Map<String, dynamic> json) => _$TransactionModelFromJson(json);
+  Map<String, dynamic> toJson() => _$TransactionModelToJson(this);
+}
+
+enum TransactionStatus {
+  pending,
+  confirmed,
+  failed,
+  cancelled,
+}
+
+enum TransactionType {
+  transfer,
+  mint,
+  burn,
+  swap,
+  stake,
+  unstake,
 }

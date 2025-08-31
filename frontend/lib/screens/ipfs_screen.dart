@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
+// import 'package:file_picker/file_picker.dart';  // Временно отключаем
 import 'package:shimmer/shimmer.dart';
 
 import '../providers/ipfs_provider.dart';
@@ -151,7 +151,7 @@ class _IPFSScreenState extends State<IPFSScreen>
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: () => _showNFTDialog(),
-                              icon: const Icon(Icons.nft),
+                              icon: const Icon(Icons.image),
                               label: const Text('NFT'),
                             ),
                           ),
@@ -735,7 +735,9 @@ class _IPFSScreenState extends State<IPFSScreen>
 
   /// Выбор документа
   void _pickDocument() async {
-    final result = await FilePicker.platform.pickFiles();
+          // final result = await FilePicker.platform.pickFiles();  // Временно отключаем
+      // TODO: Реализовать выбор файлов без file_picker
+      return;
     
     if (result != null) {
       final file = result.files.first;

@@ -297,7 +297,7 @@ class _AITrendAnalysisScreenState extends State<AITrendAnalysisScreen>
           ],
           confidence: 0.91,
           timeframe: '3 месяца',
-          icon: Icons.spring,
+          icon: Icons.wb_sunny,
           color: Colors.pink,
         ),
         _buildForecastCard(
@@ -358,7 +358,7 @@ class _AITrendAnalysisScreenState extends State<AITrendAnalysisScreen>
           content: 'AR/VR технологии трансформируют шоппинг. '
               'Виртуальные примерочные увеличивают конверсию на 30%. '
               'AI-персональные стилисты повышают удовлетворенность клиентов.',
-          icon: Icons.vr_headset,
+          icon: Icons.view_in_ar,
           color: Colors.cyan,
           tags: ['AR/VR', 'Технологии', 'Конверсия'],
         ),

@@ -6,9 +6,8 @@ import '../models/product.dart';
 /// API URL can be overridden at build/run time:
 /// flutter run -d chrome --dart-define=API_URL=http://localhost:8080/api/products
 /// Default points to localhost backend which you should run: dart run backend/bin/server.dart
-static const String BASE_URL = String.fromEnvironment('API_URL', defaultValue: 'http://localhost:8080/api/products');
-
 class ApiService {
+  static const String BASE_URL = String.fromEnvironment('API_URL', defaultValue: 'http://localhost:8080/api/products');
   static Future<List<Product>> fetchProducts() async {
     final uri = Uri.parse(BASE_URL);
     final response = await http.get(uri);

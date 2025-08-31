@@ -195,7 +195,7 @@ class _AIFashionDesignerScreenState extends State<AIFashionDesignerScreen>
           controller: _tabController,
           tabs: const [
             Tab(text: 'Create', icon: Icon(Icons.create)),
-            Tab(text: 'Templates', icon: Icon(Icons.template_outlined)),
+            Tab(text: 'Templates', icon: Icon(Icons.dashboard)),
             Tab(text: 'My Designs', icon: Icon(Icons.favorite)),
           ],
         ),
