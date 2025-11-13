@@ -16,7 +16,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.modus.fashion"
+    namespace = "com.mymodus.fashion"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
