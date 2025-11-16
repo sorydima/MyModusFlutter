@@ -35,7 +35,7 @@ class MatrixService extends ChangeNotifier {
         },
       );
 
-      await _client!.checkHomeserver(homeserverUrl);
+      await _client!.checkHomeserver(Uri.parse(homeserverUrl));
       _client!.homeserver = Uri.parse(homeserverUrl);
 
       if (accessToken != null && userId != null) {
