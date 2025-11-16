@@ -4,6 +4,7 @@ import 'providers/app_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/ai_chat_provider.dart';
 import 'providers/products_provider.dart';
+import 'providers/matrix_provider.dart';
 import 'services/notification_service.dart';
 import 'screens/main_app_screen.dart';
 
@@ -24,6 +25,7 @@ class MyModusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AIChatProvider()),
         ChangeNotifierProvider(create: (_) => ProductsProvider()),
         ChangeNotifierProvider(create: (_) => NotificationService()),
+        ChangeNotifierProvider(create: (_) => MatrixProvider()),
       ],
       child: Consumer<ProductsProvider>(
         builder: (context, productsProvider, child) {

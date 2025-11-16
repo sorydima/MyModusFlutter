@@ -76,6 +76,9 @@ dependencies:
   # Toast notifications
   fluttertoast: ^8.2.4
 
+  # Matrix & Bridges
+  matrix: ^0.29.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

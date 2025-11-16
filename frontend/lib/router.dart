@@ -17,6 +17,9 @@ import 'screens/user_profile_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/chats_list_screen.dart';
 import 'screens/main_app_screen.dart';
+import 'screens/matrix_rooms_screen.dart';
+import 'screens/matrix_chat_screen.dart';
+import 'screens/bridge_management_screen.dart';
 
 GoRouter buildRouter() {
   return GoRouter(
@@ -126,6 +129,22 @@ GoRouter buildRouter() {
       GoRoute(
         path: '/admin/scraping',
         builder: (ctx, state) => const AdminScrapingScreen(),
+      ),
+
+      // Matrix routes
+      GoRoute(
+        path: '/matrix',
+        builder: (ctx, state) => const MatrixRoomsScreen(),
+      ),
+      GoRoute(
+        path: '/matrix/chat',
+        builder: (ctx, state) => MatrixChatScreen(
+          room: state.extra as MatrixRoom,
+        ),
+      ),
+      GoRoute(
+        path: '/matrix/bridges',
+        builder: (ctx, state) => const BridgeManagementScreen(),
       ),
     ],
   );
