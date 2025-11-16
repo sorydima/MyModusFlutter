@@ -1,6 +1,6 @@
-https://api.codemagic.io/apps/690a46798b15508651917c15/690a46798b15508651917c14/status_badge.svg
+https://api.codemagic.io/apps/6915f86fd5eae7e63717446c/6915f86fd5eae7e63717446b/status_badge.svg
 
-[![Codemagic build status](https://api.codemagic.io/apps/690a46798b15508651917c15/690a46798b15508651917c14/status_badge.svg)](https://codemagic.io/app/690a46798b15508651917c15/690a46798b15508651917c14/latest_build)
+[![Codemagic build status](https://api.codemagic.io/apps/6915f86fd5eae7e63717446c/6915f86fd5eae7e63717446b/status_badge.svg)](https://codemagic.io/app/6915f86fd5eae7e63717446c/6915f86fd5eae7e63717446b/latest_build)
 
 # 🚀 MyModus - Полная платформа моды и стиля
 
