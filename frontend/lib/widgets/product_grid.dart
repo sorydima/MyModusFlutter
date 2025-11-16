@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import '../providers/product_provider.dart';
+import '../utils/responsive_utils.dart';
 import 'product_card.dart';
-import 'shimmer_card.dart';
+import '../components/shimmer_card.dart' as shimmer_card;
 
 class ProductGrid extends StatefulWidget {
   final int categoryIndex;
@@ -137,11 +139,11 @@ class _ProductGridState extends State<ProductGrid> {
     // Показываем shimmer во время загрузки
     if (productProvider.isLoading && productProvider.products.isEmpty) {
       return SliverMasonryGrid.count(
-        crossAxisCount: 2,
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 16,
-        itemCount: 6,
-        itemBuilder: (context, index) => const ShimmerCard(),
+        crossAxisCount: ResponsiveUtils.getGridCrossAxisCount(context),
+        mainAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
+        crossAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
+        childCount: 6,
+        itemBuilder: (context, index) => shimmer_card.ShimmerCard(),
       );
     }
     
@@ -220,10 +222,10 @@ class _ProductGridState extends State<ProductGrid> {
     
     // Основная сетка продуктов
     return SliverMasonryGrid.count(
-      crossAxisCount: 2,
-      mainAxisSpacing: 16,
-      crossAxisSpacing: 16,
-      itemCount: productProvider.products.length,
+      crossAxisCount: ResponsiveUtils.getGridCrossAxisCount(context),
+      mainAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
+      crossAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
+      childCount: productProvider.products.length,
       itemBuilder: (context, index) {
         final product = productProvider.products[index];
         return ProductCard(

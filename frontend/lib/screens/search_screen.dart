@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import '../providers/products_provider.dart';
 import '../models/product_model.dart';
+import '../utils/responsive_utils.dart';
 import 'product_detail_screen.dart';
 import '../widgets/product_card.dart';
 
@@ -204,11 +205,11 @@ class _SearchScreenState extends State<SearchScreen> {
               Expanded(
                 child: GridView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: ResponsiveUtils.getGridCrossAxisCount(context),
                     childAspectRatio: 0.75,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
+                    crossAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
+                    mainAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
                   ),
                   itemCount: products.length,
                   itemBuilder: (context, index) {

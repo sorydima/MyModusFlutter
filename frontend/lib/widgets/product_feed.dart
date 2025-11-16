@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import '../providers/product_provider.dart';
 import '../models/product_model.dart';
+import '../utils/responsive_utils.dart';
 import 'product_card.dart';
-import 'search_bar.dart';
+import 'search_bar.dart' as search_bar;
+import 'category_list.dart';
 
 class ProductFeed extends StatefulWidget {
   const ProductFeed({super.key});
@@ -100,7 +103,7 @@ class _ProductFeedState extends State<ProductFeed> {
             // Поисковая строка
             Padding(
               padding: const EdgeInsets.all(16),
-              child: SearchBar(
+              child: search_bar.SearchBar(
                 controller: _searchController,
                 onSubmitted: _onSearchSubmitted,
                 onCleared: _onSearchCleared,
@@ -199,11 +202,11 @@ class _ProductFeedState extends State<ProductFeed> {
       // Показываем shimmer во время первой загрузки
       return GridView.builder(
         padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: ResponsiveUtils.getGridCrossAxisCount(context),
           childAspectRatio: 0.75,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
+          crossAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
+          mainAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
         ),
         itemCount: 6,
         itemBuilder: (context, index) {
@@ -286,11 +289,11 @@ class _ProductFeedState extends State<ProductFeed> {
       child: GridView.builder(
         controller: _scrollController,
         padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: ResponsiveUtils.getGridCrossAxisCount(context),
           childAspectRatio: 0.75,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
+          crossAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
+          mainAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
         ),
         itemCount: productProvider.products.length + (productProvider.hasMore ? 1 : 0),
         itemBuilder: (context, index) {
@@ -298,7 +301,7 @@ class _ProductFeedState extends State<ProductFeed> {
             // Показываем индикатор загрузки для следующей страницы
             return _LoadingIndicator();
           }
-          
+
           final product = productProvider.products[index];
           return ProductCard(product: product);
         },

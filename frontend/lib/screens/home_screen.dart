@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/products_provider.dart';
 import '../models/product_model.dart';
+import '../utils/responsive_utils.dart';
 import 'search_screen.dart';
 import 'favorites_screen.dart';
 import 'cart_screen.dart';
@@ -205,10 +206,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1.5,
+            crossAxisCount: ResponsiveUtils.getGridCrossAxisCount(context),
+            crossAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
+            mainAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
+            childAspectRatio: ResponsiveUtils.getChildAspectRatio(context, mobile: 1.5),
             children: [
               _buildUpdateItem(
                 icon: Icons.search,
@@ -261,10 +262,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1.3,
+            crossAxisCount: ResponsiveUtils.getGridCrossAxisCount(context),
+            crossAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
+            mainAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
+            childAspectRatio: ResponsiveUtils.getChildAspectRatio(context, mobile: 1.3),
             children: [
               _buildUpdateItem(
                 icon: Icons.image,
