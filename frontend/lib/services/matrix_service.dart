@@ -28,12 +28,15 @@ class MatrixService extends ChangeNotifier {
     try {
       _client = Client(
         'MyModus',
-        databaseBuilder: (_) async {
-          // Use in-memory database for simplicity
-          // In production, implement proper database storage
-          return null;
+        databaseBuilder: null, // Use in-memory database
+        supportedLoginTypes: {
+          AuthenticationTypes.password,
+          AuthenticationTypes.sso,
         },
       );
+
+      await _client!.checkHomeserver(homeserverUrl);
+      _client!.homeserver = Uri.parse(homeserverUrl);
 
       if (accessToken != null && userId != null) {
         await _client!.init(
@@ -45,8 +48,6 @@ class MatrixService extends ChangeNotifier {
       }
 
       // Set up event listeners
-      _client!.onRoomState.stream.listen(_onRoomState);
-      _client!.onTimeline.stream.listen(_onTimeline);
       _client!.onSync.stream.listen(_onSync);
 
       _isInitialized = true;
@@ -175,32 +176,6 @@ class MatrixService extends ChangeNotifier {
     } catch (e) {
       debugPrint('Failed to leave room: $e');
       rethrow;
-    }
-  }
-
-  void _onRoomState(SyncUpdate syncUpdate) {
-    // Handle room state changes
-    _loadRooms();
-  }
-
-  void _onTimeline(EventUpdate eventUpdate) {
-    // Handle new messages and events
-    if (eventUpdate.content['type'] == 'm.room.message') {
-      final event = eventUpdate.content;
-      final message = MatrixMessage(
-        id: eventUpdate.eventId,
-        roomId: eventUpdate.roomId,
-        senderId: event['sender'],
-        senderName: event['sender'].split(':')[0],
-        content: event['content']['body'] ?? '',
-        type: event['content']['msgtype'] ?? 'text',
-        timestamp: DateTime.fromMillisecondsSinceEpoch(event['origin_server_ts']),
-        isEncrypted: event['type'] == 'm.room.encrypted',
-      );
-
-      _messages.add(message);
-      _messageStreamController.add(message);
-      notifyListeners();
     }
   }
 
