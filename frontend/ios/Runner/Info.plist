@@ -5,7 +5,7 @@
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
-		<string>My Modus Frontend</string>
+		<string>MyModus</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
@@ -47,5 +47,18 @@
 		<true/>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<key>NSCameraUsageDescription</key>
+		<string>MyModus needs access to your camera to take photos for posts and profile pictures</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>MyModus needs access to your photo library to select photos for posts and profile pictures</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>MyModus needs permission to save photos to your photo library</string>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>MyModus needs access to your microphone to record videos</string>
+		<key>NSAppTransportSecurity</key>
+		<dict>
+			<key>NSAllowsArbitraryLoads</key>
+			<true/>
+		</dict>
 	</dict>
 </plist>
