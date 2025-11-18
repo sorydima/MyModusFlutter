@@ -53,7 +53,9 @@ class MyModusApp extends StatelessWidget {
         builder: (context, productsProvider, child) {
           // Инициализируем провайдер товаров
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            productsProvider.initialize();
+            if (!productsProvider.isInitialized && !productsProvider.isLoading) {
+              productsProvider.initialize();
+            }
           });
           
           return MaterialApp(

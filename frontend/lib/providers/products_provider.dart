@@ -14,6 +14,7 @@ class ProductsProvider extends ChangeNotifier {
   double _minPrice = 0.0;
   double _maxPrice = 100000.0;
   String _selectedBrand = '';
+  bool _isInitialized = false;
   
   // Данные
   List<ProductModel> _allProducts = [];
@@ -31,6 +32,7 @@ class ProductsProvider extends ChangeNotifier {
   double get minPrice => _minPrice;
   double get maxPrice => _maxPrice;
   String get selectedBrand => _selectedBrand;
+  bool get isInitialized => _isInitialized;
   
   List<ProductModel> get allProducts => _allProducts;
   List<ProductModel> get filteredProducts => _filteredProducts;
@@ -47,6 +49,10 @@ class ProductsProvider extends ChangeNotifier {
   
   // Инициализация
   Future<void> initialize() async {
+    if (_isInitialized || _isLoading) {
+      return;
+    }
+
     _setLoading(true);
     
     try {
@@ -58,6 +64,7 @@ class ProductsProvider extends ChangeNotifier {
       ]);
       
       _applyFilters();
+      _isInitialized = true;
       notifyListeners();
     } catch (e) {
       debugPrint('Ошибка инициализации: $e');
