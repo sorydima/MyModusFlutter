@@ -1,6 +1,6 @@
 name: mymodus
 description: MyModus - Fashion Social Commerce App
-version: 2.0.2+9
+version: 2.0.3+10
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
