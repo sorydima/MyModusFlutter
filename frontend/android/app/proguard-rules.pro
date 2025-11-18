@@ -207,3 +207,27 @@
 
 # Keep data for hive_generator
 -keep class hive_generator.** { *; }
+
+# Keep MainActivity
+-keep class com.mymodus.fashionapp.MainActivity { *; }
+
+# Keep Matrix SDK classes
+-keep class org.matrix.** { *; }
+-keep class matrix.** { *; }
+
+# Keep SQLite classes
+-keep class io.flutter.plugins.sqflite.** { *; }
+-keep class com.tekartik.sqflite.** { *; }
+
+# Keep path_provider classes
+-keep class io.flutter.plugins.pathprovider.** { *; }
+
+# Keep Play Core classes for split APK support
+-keep class com.google.android.play.core.** { *; }
+-keep class com.google.android.play.core.splitcompat.** { *; }
+-keep class com.google.android.play.core.splitinstall.** { *; }
+
+# Prevent crashes from missing constructors
+-keepclassmembers class * {
+    public <init>(...);
+}

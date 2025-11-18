@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart' as http;
+import 'dart:typed_data';
 import '../services/api_service.dart';
 import '../services/web3_test_service.dart';
 import '../services/metamask_service.dart';
@@ -191,7 +192,7 @@ class Web3Provider extends ChangeNotifier {
       } else if (_connectionMode == WalletConnectionMode.privatekey) {
         // Создаем credentials из приватного ключа
         _credentials = EthPrivateKey.fromHex(privateKey);
-        _walletAddress = await _credentials!.extractAddress();
+        _walletAddress = _credentials!.address;
         
         // Получаем баланс
         await _updateBalance();

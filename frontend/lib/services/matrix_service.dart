@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:matrix/matrix.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
+import 'package:hive/hive.dart';
 import '../models/matrix_models.dart';
 import 'package:flutter/foundation.dart';
 
@@ -26,9 +30,25 @@ class MatrixService extends ChangeNotifier {
     if (_isInitialized) return;
 
     try {
+      // Get the application documents directory
+      final dir = await getApplicationDocumentsDirectory();
+      final dbPath = p.join(dir.path, 'matrix');
+
+      // Create directory if it doesn't exist
+      final matrixDir = Directory(dbPath);
+      if (!await matrixDir.exists()) {
+        await matrixDir.create(recursive: true);
+      }
+
+      // Initialize Hive database for Matrix
+      final database = HiveCollectionDatabase(
+        'matrix_client',
+        path: dbPath,
+      );
+
       _client = Client(
         'MyModus',
-        databaseBuilder: null, // Use in-memory database
+        database: database,
         supportedLoginTypes: {
           AuthenticationTypes.password,
           AuthenticationTypes.sso,

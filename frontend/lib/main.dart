@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import 'providers/app_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/ai_chat_provider.dart';
@@ -10,6 +13,25 @@ import 'screens/main_app_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Hive database
+  try {
+    await Hive.initFlutter();
+    
+    // Get app documents directory for proper path initialization
+    final appDocDir = await getApplicationDocumentsDirectory();
+    final String appDocPath = appDocDir.path;
+    
+    // Ensure the directory exists
+    final dir = Directory('$appDocPath/hive');
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    
+  } catch (e) {
+    debugPrint('Error initializing Hive: $e');
+  }
+  
   runApp(const MyModusApp());
 }
 

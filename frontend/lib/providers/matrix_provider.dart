@@ -10,7 +10,7 @@ class MatrixProvider extends ChangeNotifier {
   MatrixProvider()
       : _matrixService = MatrixService(),
         _bridgeService = BridgeService(MatrixService()) {
-    _initialize();
+    _initializeSafely();
   }
 
   MatrixService get matrixService => _matrixService;
@@ -19,6 +19,15 @@ class MatrixProvider extends ChangeNotifier {
   bool get isMatrixInitialized => _matrixService.isInitialized;
   List<MatrixRoom> get rooms => _matrixService.rooms;
   List<BridgeConfig> get bridges => _bridgeService.bridges;
+
+  Future<void> _initializeSafely() async {
+    try {
+      await _initialize();
+    } catch (e) {
+      debugPrint('Matrix initialization failed, continuing without Matrix: $e');
+      // Continue without Matrix - the app should still work
+    }
+  }
 
   Future<void> _initialize() async {
     await _bridgeService.loadBridges();

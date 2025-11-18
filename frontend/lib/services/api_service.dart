@@ -1,30 +1,34 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+// import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // Temporarily disabled
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/product_model.dart';
 
 class ApiService {
   static const String _baseUrl = 'http://localhost:8080';
   static const String _apiVersion = '/api/v1';
-  final FlutterSecureStorage _storage = FlutterSecureStorage();
+  // final FlutterSecureStorage _storage = FlutterSecureStorage(); // Temporarily disabled
   final http.Client _client = http.Client();
 
   ApiService();
 
   Future<String?> _getAuthToken() async {
-    return await _storage.read(key: 'auth_token');
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('auth_token');
   }
 
   Future<String?> _getRefreshToken() async {
-    return await _storage.read(key: 'refresh_token');
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('refresh_token');
   }
 
   Future<void> _saveTokens(Map<String, dynamic> tokens) async {
+    final prefs = await SharedPreferences.getInstance();
     if (tokens['access_token'] != null) {
-      await _storage.write(key: 'auth_token', value: tokens['access_token']);
+      await prefs.setString('auth_token', tokens['access_token']);
     }
     if (tokens['refresh_token'] != null) {
-      await _storage.write(key: 'refresh_token', value: tokens['refresh_token']);
+      await prefs.setString('refresh_token', tokens['refresh_token']);
     }
   }
 
@@ -167,8 +171,9 @@ class ApiService {
     } catch (e) {
       // Игнорируем ошибки при logout
     } finally {
-      await _storage.delete(key: 'auth_token');
-      await _storage.delete(key: 'refresh_token');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('auth_token');
+      await prefs.remove('refresh_token');
     }
   }
 
