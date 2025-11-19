@@ -59,13 +59,18 @@ class _CartScreenState extends State<CartScreen> {
             children: [
               // Список товаров в корзине
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: productsProvider.cart.length,
-                  itemBuilder: (context, index) {
-                    final cartItem = productsProvider.cart[index];
-                    return _buildCartItem(cartItem);
-                  },
+                child: RepaintBoundary(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    cacheExtent: 500,
+                    itemCount: productsProvider.cart.length,
+                    itemBuilder: (context, index) {
+                      final cartItem = productsProvider.cart[index];
+                      return RepaintBoundary(
+                        child: _buildCartItem(cartItem, index),
+                      );
+                    },
+                  ),
                 ),
               ),
               
@@ -128,8 +133,9 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildCartItem(CartProductModel cartItem) {
+  Widget _buildCartItem(CartProductModel cartItem, int index) {
     return Container(
+      key: ValueKey('cart_item_${cartItem.product.id}_$index'),
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,

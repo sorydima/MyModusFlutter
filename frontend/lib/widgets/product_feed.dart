@@ -21,6 +21,7 @@ class _ProductFeedState extends State<ProductFeed> {
   
   int _selectedCategoryIndex = 0;
   bool _isSearching = false;
+  bool _isLoadingMore = false;
 
   @override
   void initState() {
@@ -48,11 +49,36 @@ class _ProductFeedState extends State<ProductFeed> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= 
-        _scrollController.position.maxScrollExtent - 200) {
-      // Загружаем следующую страницу
+    if (!_scrollController.hasClients) return;
+    
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+    final threshold = maxScroll - 200;
+    
+    if (currentScroll >= threshold && !_isLoadingMore) {
       final appProvider = context.read<AppProvider>();
-      appProvider.productProvider.loadProducts();
+      final productProvider = appProvider.productProvider;
+      
+      // Проверяем, что есть еще данные для загрузки и не идет загрузка
+      if (productProvider.hasMore && !productProvider.isLoading) {
+        setState(() {
+          _isLoadingMore = true;
+        });
+        
+        productProvider.loadProducts().then((_) {
+          if (mounted) {
+            setState(() {
+              _isLoadingMore = false;
+            });
+          }
+        }).catchError((error) {
+          if (mounted) {
+            setState(() {
+              _isLoadingMore = false;
+            });
+          }
+        });
+      }
     }
   }
 
@@ -98,6 +124,7 @@ class _ProductFeedState extends State<ProductFeed> {
       builder: (context, appProvider, child) {
         final productProvider = appProvider.productProvider;
         
+        // Используем child для статических виджетов, чтобы избежать лишних перестроек
         return Column(
           children: [
             // Поисковая строка
@@ -286,25 +313,33 @@ class _ProductFeedState extends State<ProductFeed> {
     // Показываем список товаров
     return RefreshIndicator(
       onRefresh: _loadProducts,
-      child: GridView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.all(16),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: ResponsiveUtils.getGridCrossAxisCount(context),
-          childAspectRatio: 0.75,
-          crossAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
-          mainAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
-        ),
-        itemCount: productProvider.products.length + (productProvider.hasMore ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == productProvider.products.length) {
-            // Показываем индикатор загрузки для следующей страницы
-            return _LoadingIndicator();
-          }
+        child: RepaintBoundary(
+          child: GridView.builder(
+            controller: _scrollController,
+            padding: const EdgeInsets.all(16),
+            cacheExtent: 500,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: ResponsiveUtils.getGridCrossAxisCount(context),
+              childAspectRatio: 0.75,
+              crossAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
+              mainAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
+            ),
+            itemCount: productProvider.products.length + (productProvider.hasMore && !_isLoadingMore ? 1 : 0),
+          itemBuilder: (context, index) {
+            if (index == productProvider.products.length) {
+              // Показываем индикатор загрузки для следующей страницы
+              return const _LoadingIndicator();
+            }
 
-          final product = productProvider.products[index];
-          return ProductCard(product: product);
-        },
+            final product = productProvider.products[index];
+            return RepaintBoundary(
+              child: ProductCard(
+                key: ValueKey('product_${product.id}'),
+                product: product,
+              ),
+            );
+          },
+        ),
       ),
     );
   }

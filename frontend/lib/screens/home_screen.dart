@@ -67,28 +67,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
+    // Используем RepaintBoundary для оптимизации перестроений
     return Scaffold(
       backgroundColor: theme.colorScheme.background,
       body: CustomScrollView(
         slivers: [
           _buildSliverAppBar(theme),
           SliverToBoxAdapter(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: Column(
-                  children: [
-                    _buildWelcomeSection(theme),
-                    _buildQuickActionsSection(theme),
-                    _buildWeb3AIFunctionsSection(theme),
-                    _buildFeaturedProductsSection(theme),
-                    _buildCategoriesSection(theme),
-                    _buildBrandsSection(theme),
-                    const SizedBox(height: 40),
-                  ],
-                ),
-              ),
+            child: RepaintBoundary(
+              child: _fadeAnimation.isCompleted
+                  ? Column(
+                      children: [
+                        _buildWelcomeSection(theme),
+                        _buildQuickActionsSection(theme),
+                        _buildWeb3AIFunctionsSection(theme),
+                        _buildFeaturedProductsSection(theme),
+                        _buildCategoriesSection(theme),
+                        _buildBrandsSection(theme),
+                        const SizedBox(height: 40),
+                      ],
+                    )
+                  : FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: SlideTransition(
+                        position: _slideAnimation,
+                        child: Column(
+                          children: [
+                            _buildWelcomeSection(theme),
+                            _buildQuickActionsSection(theme),
+                            _buildWeb3AIFunctionsSection(theme),
+                            _buildFeaturedProductsSection(theme),
+                            _buildCategoriesSection(theme),
+                            _buildBrandsSection(theme),
+                            const SizedBox(height: 40),
+                          ],
+                        ),
+                      ),
+                    ),
             ),
           ),
         ],
@@ -333,46 +348,49 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           return const SizedBox.shrink();
         }
 
-        return Container(
-          margin: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Топ товары',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+        return RepaintBoundary(
+          child: Container(
+            margin: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Топ товары',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      _navigateToScreen(SearchScreen());
-                    },
-                    child: const Text('Смотреть все'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 200,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: topProducts.length,
-                  itemBuilder: (context, index) {
-                    final product = topProducts[index];
-                    return Container(
-                      width: 160,
-                      margin: const EdgeInsets.only(right: 16),
-                      child: _buildProductCard(product, theme),
-                    );
-                  },
+                    TextButton(
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        _navigateToScreen(SearchScreen());
+                      },
+                      child: const Text('Смотреть все'),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 200,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: topProducts.length,
+                    itemBuilder: (context, index) {
+                      final product = topProducts[index];
+                      return Container(
+                        key: ValueKey('top_product_${product.id}'),
+                        width: 160,
+                        margin: const EdgeInsets.only(right: 16),
+                        child: _buildProductCard(product, theme),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -386,34 +404,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           return const SizedBox.shrink();
         }
 
-        return Container(
-          margin: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Категории',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
+        return RepaintBoundary(
+          child: Container(
+            margin: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Категории',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 120,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: productsProvider.categories.length,
-                  itemBuilder: (context, index) {
-                    final category = productsProvider.categories[index];
-                    return Container(
-                      width: 120,
-                      margin: const EdgeInsets.only(right: 16),
-                      child: _buildCategoryCard(category, theme),
-                    );
-                  },
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 120,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: productsProvider.categories.length,
+                    itemBuilder: (context, index) {
+                      final category = productsProvider.categories[index];
+                      return Container(
+                        key: ValueKey('category_$category'),
+                        width: 120,
+                        margin: const EdgeInsets.only(right: 16),
+                        child: _buildCategoryCard(category, theme),
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

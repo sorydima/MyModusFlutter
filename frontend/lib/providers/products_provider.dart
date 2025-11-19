@@ -419,7 +419,9 @@ class ProductsProvider extends ChangeNotifier {
   
   // Приватные методы
   void _setLoading(bool loading) {
-    _isLoading = loading;
-    notifyListeners();
+    if (_isLoading != loading) {
+      _isLoading = loading;
+      notifyListeners();
+    }
   }
 }

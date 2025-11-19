@@ -12,84 +12,114 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> {
   final ScrollController _scrollController = ScrollController();
   
-  // Тестовые данные постов
-  final List<Map<String, dynamic>> _posts = [
-    {
-      'id': '1',
-      'user': {
-        'name': 'Fashionista',
-        'avatar': 'https://via.placeholder.com/50x50/FF6B6B/FFFFFF?text=F',
-        'verified': true,
+  // Тестовые данные постов - используем List для возможности обновления
+  late List<Map<String, dynamic>> _posts;
+
+  @override
+  void initState() {
+    super.initState();
+    _posts = [
+      {
+        'id': '1',
+        'user': {
+          'name': 'Fashionista',
+          'avatar': 'https://via.placeholder.com/50x50/FF6B6B/FFFFFF?text=F',
+          'verified': true,
+        },
+        'image': 'https://via.placeholder.com/400x500/FF6B6B/FFFFFF?text=Fashion+Post+1',
+        'caption': '🔥 Новый образ для весны! Как вам этот look? #мода #стиль #весна',
+        'likes': 1247,
+        'comments': 89,
+        'timeAgo': '2 часа назад',
+        'isLiked': false,
+        'isSaved': false,
+        'products': [
+          {
+            'id': '1',
+            'title': 'Nike Air Max 270',
+            'price': 12990,
+            'imageUrl': 'https://via.placeholder.com/80x80/FF6B6B/FFFFFF?text=Nike',
+          },
+        ],
       },
-      'image': 'https://via.placeholder.com/400x500/FF6B6B/FFFFFF?text=Fashion+Post+1',
-      'caption': '🔥 Новый образ для весны! Как вам этот look? #мода #стиль #весна',
-      'likes': 1247,
-      'comments': 89,
-      'timeAgo': '2 часа назад',
-      'isLiked': false,
-      'isSaved': false,
-      'products': [
-        {
-          'id': '1',
-          'title': 'Nike Air Max 270',
-          'price': 12990,
-          'imageUrl': 'https://via.placeholder.com/80x80/FF6B6B/FFFFFF?text=Nike',
+      {
+        'id': '2',
+        'user': {
+          'name': 'Style Guru',
+          'avatar': 'https://via.placeholder.com/50x50/4ECDC4/FFFFFF?text=S',
+          'verified': false,
         },
-      ],
-    },
-    {
-      'id': '2',
-      'user': {
-        'name': 'Style Guru',
-        'avatar': 'https://via.placeholder.com/50x50/4ECDC4/FFFFFF?text=S',
-        'verified': false,
+        'image': 'https://via.placeholder.com/400x500/4ECDC4/FFFFFF?text=Fashion+Post+2',
+        'caption': '💫 Минимализм в моде! Простые линии и качественные материалы всегда в тренде #минимализм #стиль',
+        'likes': 892,
+        'comments': 45,
+        'timeAgo': '5 часов назад',
+        'isLiked': true,
+        'isSaved': true,
+        'products': [
+          {
+            'id': '3',
+            'title': 'Levi\'s 501 Jeans',
+            'price': 7990,
+            'imageUrl': 'https://via.placeholder.com/80x80/45B7D1/FFFFFF?text=Levis',
+          },
+          {
+            'id': '6',
+            'title': 'Converse Chuck',
+            'price': 5990,
+            'imageUrl': 'https://via.placeholder.com/80x80/FF6B9D/FFFFFF?text=Converse',
+          },
+        ],
       },
-      'image': 'https://via.placeholder.com/400x500/4ECDC4/FFFFFF?text=Fashion+Post+2',
-      'caption': '💫 Минимализм в моде! Простые линии и качественные материалы всегда в тренде #минимализм #стиль',
-      'likes': 892,
-      'comments': 45,
-      'timeAgo': '5 часов назад',
-      'isLiked': true,
-      'isSaved': true,
-      'products': [
-        {
-          'id': '3',
-          'title': 'Levi\'s 501 Jeans',
-          'price': 7990,
-          'imageUrl': 'https://via.placeholder.com/80x80/45B7D1/FFFFFF?text=Levis',
+      {
+        'id': '3',
+        'user': {
+          'name': 'Trend Setter',
+          'avatar': 'https://via.placeholder.com/50x50/96CEB4/FFFFFF?text=T',
+          'verified': true,
         },
-        {
-          'id': '6',
-          'title': 'Converse Chuck',
-          'price': 5990,
-          'imageUrl': 'https://via.placeholder.com/80x80/FF6B9D/FFFFFF?text=Converse',
-        },
-      ],
-    },
-    {
-      'id': '3',
-      'user': {
-        'name': 'Trend Setter',
-        'avatar': 'https://via.placeholder.com/50x50/96CEB4/FFFFFF?text=T',
-        'verified': true,
+        'image': 'https://via.placeholder.com/400x500/96CEB4/FFFFFF?text=Fashion+Post+3',
+        'caption': '🌟 Вечерний выход! Какой образ выберете для вечеринки? #вечер #гламур #стиль',
+        'likes': 2156,
+        'comments': 156,
+        'timeAgo': '1 день назад',
+        'isLiked': false,
+        'isSaved': false,
+        'products': [
+          {
+            'id': '4',
+            'title': 'Apple Watch Series 8',
+            'price': 45990,
+            'imageUrl': 'https://via.placeholder.com/80x80/96CEB4/FFFFFF?text=Apple',
+          },
+        ],
       },
-      'image': 'https://via.placeholder.com/400x500/96CEB4/FFFFFF?text=Fashion+Post+3',
-      'caption': '🌟 Вечерний выход! Какой образ выберете для вечеринки? #вечер #гламур #стиль',
-      'likes': 2156,
-      'comments': 156,
-      'timeAgo': '1 день назад',
-      'isLiked': false,
-      'isSaved': false,
-      'products': [
-        {
-          'id': '4',
-          'title': 'Apple Watch Series 8',
-          'price': 45990,
-          'imageUrl': 'https://via.placeholder.com/80x80/96CEB4/FFFFFF?text=Apple',
-        },
-      ],
-    },
-  ];
+    ];
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _toggleLike(int index) {
+    setState(() {
+      final post = _posts[index];
+      post['isLiked'] = !post['isLiked'];
+      if (post['isLiked']) {
+        post['likes'] = (post['likes'] as int) + 1;
+      } else {
+        post['likes'] = (post['likes'] as int) - 1;
+      }
+    });
+  }
+
+  void _toggleSave(int index) {
+    setState(() {
+      _posts[index]['isSaved'] = !_posts[index]['isSaved'];
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,6 +127,7 @@ class _FeedScreenState extends State<FeedScreen> {
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: CustomScrollView(
         controller: _scrollController,
+        cacheExtent: 500,
         slivers: [
           // App Bar
           SliverAppBar(
@@ -148,8 +179,7 @@ class _FeedScreenState extends State<FeedScreen> {
           SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
-                final post = _posts[index];
-                return _buildPostCard(post);
+                return _buildPostCard(_posts[index], index);
               },
               childCount: _posts.length,
             ),
@@ -159,9 +189,11 @@ class _FeedScreenState extends State<FeedScreen> {
     );
   }
 
-  Widget _buildPostCard(Map<String, dynamic> post) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+  Widget _buildPostCard(Map<String, dynamic> post, int index) {
+    return RepaintBoundary(
+      child: Container(
+        key: ValueKey('post_${post['id']}'),
+        margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -306,16 +338,7 @@ class _FeedScreenState extends State<FeedScreen> {
                   children: [
                     // Лайк
                     GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          post['isLiked'] = !post['isLiked'];
-                          if (post['isLiked']) {
-                            post['likes']++;
-                          } else {
-                            post['likes']--;
-                          }
-                        });
-                      },
+                      onTap: () => _toggleLike(index),
                       child: Icon(
                         post['isLiked'] 
                             ? Icons.favorite 
@@ -349,11 +372,7 @@ class _FeedScreenState extends State<FeedScreen> {
                     
                     // Сохранить
                     GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          post['isSaved'] = !post['isSaved'];
-                        });
-                      },
+                      onTap: () => _toggleSave(index),
                       child: Icon(
                         post['isSaved'] 
                             ? Icons.bookmark 
@@ -431,9 +450,10 @@ class _FeedScreenState extends State<FeedScreen> {
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       itemCount: (post['products'] as List).length,
-                      itemBuilder: (context, index) {
-                        final product = (post['products'] as List)[index];
+                      itemBuilder: (context, productIndex) {
+                        final product = (post['products'] as List)[productIndex];
                         return Container(
+                          key: ValueKey('product_${product['id']}_$productIndex'),
                           margin: const EdgeInsets.only(right: 12),
                           child: Column(
                             children: [
@@ -465,9 +485,9 @@ class _FeedScreenState extends State<FeedScreen> {
                                 ),
                               ),
                             ],
-            ),
-          );
-        },
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -475,6 +495,7 @@ class _FeedScreenState extends State<FeedScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

@@ -41,8 +41,13 @@ class _ProductGridState extends State<ProductGrid> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= 
-        _scrollController.position.maxScrollExtent - 200) {
+    if (!_scrollController.hasClients) return;
+    
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+    final threshold = maxScroll - 200;
+    
+    if (currentScroll >= threshold && !_isLoadingMore) {
       _loadMoreProducts();
     }
   }
@@ -67,16 +72,21 @@ class _ProductGridState extends State<ProductGrid> {
     final appProvider = context.read<AppProvider>();
     final productProvider = appProvider.productProvider;
     
-    if (productProvider.hasMore) {
+    // Проверяем, что есть еще данные для загрузки и не идет загрузка
+    if (productProvider.hasMore && !productProvider.isLoading) {
       setState(() {
         _isLoadingMore = true;
       });
       
-      await productProvider.loadProducts();
-      
-      setState(() {
-        _isLoadingMore = false;
-      });
+      try {
+        await productProvider.loadProducts();
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoadingMore = false;
+          });
+        }
+      }
     }
   }
 
@@ -228,17 +238,20 @@ class _ProductGridState extends State<ProductGrid> {
       childCount: productProvider.products.length,
       itemBuilder: (context, index) {
         final product = productProvider.products[index];
-        return ProductCard(
-          product: product,
-          onTap: () {
-            // TODO: Навигация к детальному экрану продукта
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Открыть ${product.title}'),
-                duration: const Duration(seconds: 1),
-              ),
-            );
-          },
+        return RepaintBoundary(
+          child: ProductCard(
+            key: ValueKey('product_${product.id}_$index'),
+            product: product,
+            onTap: () {
+              // TODO: Навигация к детальному экрану продукта
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Открыть ${product.title}'),
+                  duration: const Duration(seconds: 1),
+                ),
+              );
+            },
+          ),
         );
       },
     );

@@ -203,19 +203,24 @@ class _SearchScreenState extends State<SearchScreen> {
               
               // Сетка товаров
               Expanded(
-                child: GridView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: ResponsiveUtils.getGridCrossAxisCount(context),
-                    childAspectRatio: 0.75,
-                    crossAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
-                    mainAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
+                child: RepaintBoundary(
+                  child: GridView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    cacheExtent: 500,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: ResponsiveUtils.getGridCrossAxisCount(context),
+                      childAspectRatio: 0.75,
+                      crossAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
+                      mainAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
+                    ),
+                    itemCount: products.length,
+                    itemBuilder: (context, index) {
+                      final product = products[index];
+                      return RepaintBoundary(
+                        child: _buildProductCard(product, index),
+                      );
+                    },
                   ),
-                  itemCount: products.length,
-                  itemBuilder: (context, index) {
-                    final product = products[index];
-                    return _buildProductCard(product);
-                  },
                 ),
               ),
             ],
@@ -225,8 +230,9 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildProductCard(ProductModel product) {
+  Widget _buildProductCard(ProductModel product, int index) {
     return GestureDetector(
+      key: ValueKey('search_product_${product.id}_$index'),
       onTap: () {
         HapticFeedback.lightImpact();
         Navigator.of(context).push(

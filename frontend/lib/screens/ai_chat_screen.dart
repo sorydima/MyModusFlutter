@@ -122,6 +122,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                             itemBuilder: (context, index) {
                               final message = messages[index];
                               return ChatMessage(
+                                key: ValueKey('chat_message_${message.id}_$index'),
                                 message: message,
                                 onImageTap: () => _showImageDialog(context, message),
                                 onCopy: () => _copyMessage(message),

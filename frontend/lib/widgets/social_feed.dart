@@ -12,6 +12,7 @@ class SocialFeed extends StatefulWidget {
 
 class _SocialFeedState extends State<SocialFeed> {
   final ScrollController _scrollController = ScrollController();
+  bool _isLoadingMore = false;
 
   @override
   void initState() {
@@ -38,11 +39,36 @@ class _SocialFeedState extends State<SocialFeed> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= 
-        _scrollController.position.maxScrollExtent - 200) {
-      // Загружаем следующую страницу
+    if (!_scrollController.hasClients) return;
+    
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+    final threshold = maxScroll - 200;
+    
+    if (currentScroll >= threshold && !_isLoadingMore) {
       final appProvider = context.read<AppProvider>();
-      appProvider.socialProvider.loadPosts();
+      final socialProvider = appProvider.socialProvider;
+      
+      // Проверяем, что есть еще данные для загрузки и не идет загрузка
+      if (socialProvider.hasMorePosts && !socialProvider.isLoading) {
+        setState(() {
+          _isLoadingMore = true;
+        });
+        
+        socialProvider.loadPosts().then((_) {
+          if (mounted) {
+            setState(() {
+              _isLoadingMore = false;
+            });
+          }
+        }).catchError((error) {
+          if (mounted) {
+            setState(() {
+              _isLoadingMore = false;
+            });
+          }
+        });
+      }
     }
   }
 
@@ -80,7 +106,7 @@ class _SocialFeedState extends State<SocialFeed> {
                   (context, index) {
                     if (index == socialProvider.posts.length) {
                       // Показываем индикатор загрузки для следующей страницы
-                      if (socialProvider.hasMorePosts) {
+                      if (socialProvider.hasMorePosts && !_isLoadingMore) {
                         return const Padding(
                           padding: EdgeInsets.all(16),
                           child: Center(child: CircularProgressIndicator()),
@@ -90,10 +116,15 @@ class _SocialFeedState extends State<SocialFeed> {
                     }
                     
                     final post = socialProvider.posts[index];
-                    return PostCard(post: post);
+                    return RepaintBoundary(
+                      child: PostCard(
+                        key: ValueKey('post_${post.id}'),
+                        post: post,
+                      ),
+                    );
                   },
                   childCount: socialProvider.posts.length + 
-                      (socialProvider.hasMorePosts ? 1 : 0),
+                      (socialProvider.hasMorePosts && !_isLoadingMore ? 1 : 0),
                 ),
               ),
             ],

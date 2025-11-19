@@ -90,14 +90,19 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               
               // Список избранных товаров
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: productsProvider.favorites.length,
-                  itemBuilder: (context, index) {
-                    final product = productsProvider.favorites[index];
-                    final productModel = productsProvider.allProducts.firstWhere((p) => p.id == product);
-                    return _buildFavoriteItem(productModel);
-                  },
+                child: RepaintBoundary(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    cacheExtent: 500,
+                    itemCount: productsProvider.favorites.length,
+                    itemBuilder: (context, index) {
+                      final product = productsProvider.favorites[index];
+                      final productModel = productsProvider.allProducts.firstWhere((p) => p.id == product);
+                      return RepaintBoundary(
+                        child: _buildFavoriteItem(productModel, index),
+                      );
+                    },
+                  ),
                 ),
               ),
             ],
@@ -157,8 +162,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     );
   }
 
-  Widget _buildFavoriteItem(ProductModel product) {
+  Widget _buildFavoriteItem(ProductModel product, int index) {
     return Container(
+      key: ValueKey('favorite_${product.id}_$index'),
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
